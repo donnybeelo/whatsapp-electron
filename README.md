@@ -2,12 +2,13 @@
 WhatsApp Client built on Electron with multi-account support!<br>
 Tested on Linux and Windows.
 
+Fork from https://github.com/dagmoller/whatsapp-electron.git
+
 ## Compilation and Usage
 
 Requires:
 
-- Nodejs **== v18**
-- npm
+- bun
 - git
 
 Run:
@@ -15,14 +16,14 @@ Run:
 ```bash
 
 # Clone the repo
-git clone https://github.com/dagmoller/whatsapp-electron.git
+git clone https://github.com/donnybeelo/whatsapp-electron.git
 
 # Move to whatsapp-electron directory
 cd whatsapp-electron
 
 # Install dependencies
-npm install
+bun install
 
 # Start the app
-npm run start
+bun start
 ```
