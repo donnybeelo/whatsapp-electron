@@ -18,9 +18,9 @@ ipcRenderer.on("init-resources", (event, data) => {
 
 			ctx.drawImage(image, 0, 0, image.width, image.height);
 
-			var centerX = (canvas.width * .75) - 2;
-			var centerY = (canvas.height * .25) + 2;
-			var radius  = 140;
+			var centerX = canvas.width * 0.75 - 2;
+			var centerY = canvas.height * 0.25 + 2;
+			var radius = 128;
 
 			ctx.beginPath();
 			ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
@@ -29,10 +29,6 @@ ipcRenderer.on("init-resources", (event, data) => {
 			ctx.lineWidth = 2;
 			ctx.strokeStyle = "#003300";
 			ctx.stroke();
-
-			ctx.font = 'bold 280px Arial';
-			ctx.fillStyle = '#ffffff';
-			ctx.fillText(String(counter), centerX - (counter >= 10 ? 110 : 55), centerY + 70);
 
 			var data = canvas.toDataURL("image/png");
 

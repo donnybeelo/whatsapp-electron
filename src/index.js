@@ -14,7 +14,12 @@ const Store = require("electron-store");
 const path = require("node:path");
 const fs = require("node:fs");
 
-app.setAppUserModelId('whatsapp-electron');
+app.setAppUserModelId("whatsapp-electron");
+
+// Set desktop name for Linux notifications (AppImage)
+if (process.platform === "linux") {
+	app.setDesktopName("whatsapp-electron.desktop");
+}
 
 // Single Electron Instance
 if (!app.requestSingleInstanceLock()) {

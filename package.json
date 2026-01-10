@@ -1,51 +1,56 @@
 {
-  "name": "whatsapp-electron",
-  "productName": "WhatsApp",
-  "desktopName": "WhatsApp",
-  "version": "1.3.0",
-  "description": "An unofficial WhatsApp desktop client built with Electron.",
-  "author": "Daniel Elia (donnybeelo)",
-  "license": "ISC",
-  "main": "./src/index.js",
-  "scripts": {
-    "start": "electron ./src",
-    "clean": "rm -rf ./dist",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:linux": "electron-builder --linux --x64",
-    "dist:windows": "electron-builder --windows --x64"
-  },
-  "build": {
-    "linux": {
-      "appId": "whatsapp-electron",
-      "icon": "./assets/whatsapp-icon-512x512.png",
-      "category": "Network",
-      "target": [
-        "AppImage"
-      ],
-      "asarUnpack": [
-        "**/assets/*.svg",
-        "**/assets/*.png"
-      ]
-    },
-    "win": {
-      "appId": "whatsapp-electron",
-      "icon": "./assets/whatsapp-icon-512x512.png",
-      "target": [
-        "portable",
-        "zip"
-      ],
-      "asarUnpack": [
-        "**/assets/*.svg",
-        "**/assets/*.png"
-      ]
-    }
-  },
-  "dependencies": {
-    "electron-store": "^8.2.0"
-  },
-  "devDependencies": {
-    "electron": "^39.2.1",
-    "electron-builder": "^26.0.12"
-  }
+	"name": "whatsapp-electron",
+	"productName": "WhatsApp",
+	"desktopName": "WhatsApp",
+	"version": "1.3.0",
+	"description": "An unofficial WhatsApp desktop client built with Electron.",
+	"author": "Daniel Elia (donnybeelo)",
+	"license": "ISC",
+	"main": "./src/index.js",
+	"scripts": {
+		"start": "electron ./src",
+		"clean": "rm -rf ./dist",
+		"pack": "electron-builder --dir",
+		"dist": "electron-builder",
+		"dist:linux": "electron-builder --linux --x64",
+		"dist:windows": "electron-builder --windows --x64"
+	},
+	"build": {
+		"linux": {
+			"appId": "whatsapp-electron",
+			"desktop": {
+				"entry": {
+					"StartupWMClass": "whatsapp-electron"
+				}
+			},
+			"icon": "./assets/whatsapp-icon-512x512.png",
+			"category": "Network",
+			"target": [
+				"AppImage"
+			],
+			"asarUnpack": [
+				"**/assets/*.svg",
+				"**/assets/*.png"
+			]
+		},
+		"win": {
+			"appId": "whatsapp-electron",
+			"icon": "./assets/whatsapp-icon-512x512.png",
+			"target": [
+				"portable",
+				"zip"
+			],
+			"asarUnpack": [
+				"**/assets/*.svg",
+				"**/assets/*.png"
+			]
+		}
+	},
+	"dependencies": {
+		"electron-store": "^8.2.0"
+	},
+	"devDependencies": {
+		"electron": "^39.2.1",
+		"electron-builder": "^26.0.12"
+	}
 }
