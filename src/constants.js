@@ -1,5 +1,5 @@
 Constants = {
-	appName: "WhatsApp Electron",
+	appName: "WhatsApp",
 	offsets: {
 		window: { x: 0, y: 0, width: 0, height: 0 }, // Linux
 		view: { x: 0, y: 0, width: 0, height: 0 }, // Linux
