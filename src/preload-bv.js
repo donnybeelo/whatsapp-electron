@@ -274,62 +274,88 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		console.log(`Starting new WhatsAppInstance...`);
 		wa = new WhatsAppInstance(data.id, data.name);
 		window.wa = wa;
+		
+		const style = document.createElement("style");
+		style.textContent = `
+			/* Make all headers draggable */
+			header {
+				-webkit-app-region: drag !important;
+				z-index: 9999 !important;
+			}
 
-		setTimeout(() => {
-			const style = document.createElement("style");
-			style.textContent = `
-				/* Make all headers draggable */
-				header {
-					-webkit-app-region: drag !important;
-					z-index: 9999 !important;
-				}
-				
-				.overlay {
-					width: calc(100% - 65px) !important;
-			    margin-left: 65px;
-			    border-radius: 0 16px 16px 0 !important;
-				}
+			.overlay {
+				width: calc(100% - 65px) !important;
+		    margin-left: 65px;
+		    border-radius: 0 16px 16px 0 !important;
+			}
 
-				header button, [role="button"] {
-					-webkit-app-region: no-drag !important;
-				}
+			header button, [role="button"] {
+				-webkit-app-region: no-drag !important;
+			}
 
-				html, body {
-					border-radius: 16px !important;
-					overflow: hidden !important;
-					background-color: transparent !important;
-				}
+			html, body {
+				border-radius: 16px !important;
+				overflow: hidden !important;
+			}
 
-				#app,
-			  .overlay {
-					border-radius: 16px !important;
-					overflow: hidden !important;
-					background: black !important;
-				}
+			#app,
+		  .overlay {
+				border-radius: 16px !important;
+				overflow: hidden !important;
+			}
 
-				body {
-					background-color: transparent !important;
-				}
-			`;
-			document.head.appendChild(style);
+			body {
+				background-color: transparent !important;
+			}
+		`;
+		document.head.appendChild(style);
+
+		// Flag to prevent double initialization
+		let uiInitialized = false;
+
+		// Function to initialize UI when WhatsApp is fully loaded
+		const initializeUI = () => {
+			if (uiInitialized) {
+				console.log("UI already initialized, skipping...");
+				return;
+			}
+			uiInitialized = true;
+			console.log("WhatsApp loaded, initializing UI...");
 
 			window.ipcRenderer = require("electron").ipcRenderer;
 
-			console.log("Constants in setTimeout:", Constants);
-			console.log("Constants.event:", Constants.event);
-			console.log(
-				"Constants.event.closeWindow:",
-				Constants.event ? Constants.event.closeWindow : "event undefined",
-			);
+			// Add mutation observer to ensure dynamically added elements get border-radius
+			const borderObserver = new MutationObserver((mutations) => {
+				mutations.forEach((mutation) => {
+					mutation.addedNodes.forEach((node) => {
+						if (node.nodeType === 1 && node.parentElement === document.body) {
+							// Apply border-radius to top-level elements added to body
+							node.style.borderRadius = "16px";
+							node.style.overflow = "hidden";
+						}
+					});
+				});
+			});
 
+			borderObserver.observe(document.body, {
+				childList: true,
+				subtree: false,
+			});
+
+			// Add window control buttons
 			const sidebarHeader = document.querySelector(
 				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
 			);
 
-			if (sidebarHeader) {
+			// Check if buttons already exist
+			if (
+				sidebarHeader &&
+				!document.getElementById("electron-window-controls")
+			) {
 				const buttonClasses =
 					"x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 x1q0g3np x1cy8zhl x100vrsf x1vqgdyp xhslqc4 x1ekkm8c x1143rjc xum4auv xj21bgg x1277o0a x13i9f1t xr9ek0c xjpr12u";
 				const buttonContainer = document.createElement("div");
+				buttonContainer.id = "electron-window-controls";
 
 				buttonContainer.style.cssText =
 					"margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
@@ -381,7 +407,48 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
 			}
-		}, 3000);
+		};
+
+		// Wait for WhatsApp to load by detecting when the sidebar header appears
+		const waitForWhatsApp = () => {
+			const sidebarHeader = document.querySelector(
+				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
+			);
+
+			if (sidebarHeader) {
+				console.log("WhatsApp sidebar detected!");
+				initializeUI();
+			} else {
+				// WhatsApp not loaded yet, use MutationObserver
+				console.log("Waiting for WhatsApp to load...");
+				const observer = new MutationObserver((mutations, obs) => {
+					const sidebar = document.querySelector(
+						'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
+					);
+
+					if (sidebar) {
+						console.log("WhatsApp loaded via MutationObserver!");
+						obs.disconnect();
+						initializeUI();
+					}
+				});
+
+				observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+				});
+
+				// Fallback timeout in case the observer doesn't catch it
+				setTimeout(() => {
+					console.log("Fallback timeout reached, initializing anyway...");
+					observer.disconnect();
+					initializeUI();
+				}, 5000);
+			}
+		};
+
+		// Start waiting for WhatsApp after a short delay to let the page start loading
+		setTimeout(waitForWhatsApp, 500);
 	}
 });
 
