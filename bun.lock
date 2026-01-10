@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "whatsapp-electron",
+      "name": "whatsapp",
       "dependencies": {
         "electron-store": "^8.2.0",
       },

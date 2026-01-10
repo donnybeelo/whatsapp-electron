@@ -1,5 +1,5 @@
 {
-	"name": "whatsapp-electron",
+	"name": "whatsapp",
 	"productName": "WhatsApp",
 	"desktopName": "WhatsApp",
 	"version": "1.3.0",
@@ -17,10 +17,10 @@
 	},
 	"build": {
 		"linux": {
-			"appId": "whatsapp-electron",
+			"appId": "whatsapp",
 			"desktop": {
 				"entry": {
-					"StartupWMClass": "whatsapp-electron"
+					"StartupWMClass": "whatsapp"
 				}
 			},
 			"icon": "./assets/whatsapp-icon-512x512.png",
@@ -34,7 +34,7 @@
 			]
 		},
 		"win": {
-			"appId": "whatsapp-electron",
+			"appId": "whatsapp",
 			"icon": "./assets/whatsapp-icon-512x512.png",
 			"target": [
 				"portable",
