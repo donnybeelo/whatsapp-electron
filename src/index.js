@@ -145,7 +145,7 @@ class WhatsAppElectron {
 
 		const menu = Menu.buildFromTemplate([
 			{
-				label: "Show/Hide",
+				label: "Show WhatsApp",
 				click: () => {
 					this.showHide();
 				},
