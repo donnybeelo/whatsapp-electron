@@ -1,5 +1,4 @@
- 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require("electron");
 
 ipcRenderer.on("init-resources", (event, data) => {
 	console.log("Received Constants:", data.constants);
@@ -8,30 +7,30 @@ ipcRenderer.on("init-resources", (event, data) => {
 	ipcRenderer.on(Constants.event.buildBadgeIcon, (event, counter) => {
 		console.log("Received:", Constants.event.buildBadgeIcon);
 		var image = new Image();
-		image.setAttribute('crossorigin', 'anonymous');
+		image.setAttribute("crossorigin", "anonymous");
 
 		image.onload = () => {
 			var canvas = window.document.createElement("canvas");
 			var ctx = canvas.getContext("2d");
 
-			canvas.width  = image.width;
+			canvas.width = image.width;
 			canvas.height = image.height;
 
-			ctx.drawImage(image, 0, 0, image.width, image.height)
+			ctx.drawImage(image, 0, 0, image.width, image.height);
 
 			var centerX = (canvas.width * .75) - 2;
 			var centerY = (canvas.height * .25) + 2;
-			var radius  = 128;
+			var radius  = 140;
 
 			ctx.beginPath();
 			ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-			ctx.fillStyle = '#ff3333';
+			ctx.fillStyle = "#ff3333";
 			ctx.fill();
 			ctx.lineWidth = 2;
-			ctx.strokeStyle = '#003300';
+			ctx.strokeStyle = "#003300";
 			ctx.stroke();
 
-			ctx.font = 'bold 200px Arial';
+			ctx.font = 'bold 280px Arial';
 			ctx.fillStyle = '#ffffff';
 			ctx.fillText(String(counter), centerX - (counter >= 10 ? 110 : 55), centerY + 70);
 
@@ -45,12 +44,17 @@ ipcRenderer.on("init-resources", (event, data) => {
 	});
 
 	contextBridge.exposeInMainWorld("electron", {
-		getAccounts: () => ipcRenderer.invoke(Constants.event.getAccountsList).then((accounts) => { return accounts; }),
-		addAccount: (id, name) => ipcRenderer.send(Constants.event.addAccount, {id, name}),
-		updateAccount: (id, name) => ipcRenderer.send(Constants.event.updateAccount, {id, name}),
+		getAccounts: () =>
+			ipcRenderer.invoke(Constants.event.getAccountsList).then((accounts) => {
+				return accounts;
+			}),
+		addAccount: (id, name) =>
+			ipcRenderer.send(Constants.event.addAccount, { id, name }),
+		updateAccount: (id, name) =>
+			ipcRenderer.send(Constants.event.updateAccount, { id, name }),
 		deleteAccount: (id) => ipcRenderer.send(Constants.event.deleteAccount, id),
 		gotoAccount: (id) => ipcRenderer.send(Constants.event.gotoAccount, id),
-		reloadAccounts: (callback) => ipcRenderer.on(Constants.event.reloadAccounts, callback)
+		reloadAccounts: (callback) =>
+			ipcRenderer.on(Constants.event.reloadAccounts, callback),
 	});
-
 });

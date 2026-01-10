@@ -17,7 +17,7 @@
   },
   "build": {
     "linux": {
-      "appId": "WhatsApp",
+      "appId": "whatsapp-electron",
       "icon": "./assets/whatsapp-icon-512x512.png",
       "category": "Network",
       "target": [
@@ -29,7 +29,7 @@
       ]
     },
     "win": {
-      "appId": "WhatsApp",
+      "appId": "whatsapp-electron",
       "icon": "./assets/whatsapp-icon-512x512.png",
       "target": [
         "portable",

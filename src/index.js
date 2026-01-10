@@ -14,6 +14,8 @@ const Store = require("electron-store");
 const path = require("node:path");
 const fs = require("node:fs");
 
+app.setAppUserModelId('whatsapp-electron');
+
 // Single Electron Instance
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
