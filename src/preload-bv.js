@@ -281,13 +281,27 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				/* Make all headers draggable */
 				header {
 					-webkit-app-region: drag !important;
+					z-index: 9999 !important;
+				}
+				
+				.overlay {
+					width: calc(100% - 65px) !important;
+			    margin-left: 65px;
+			    border-radius: 0 16px 16px 0 !important;
 				}
 
 				header button, [role="button"] {
 					-webkit-app-region: no-drag !important;
 				}
 
-				#app {
+				html, body {
+					border-radius: 16px !important;
+					overflow: hidden !important;
+					background-color: transparent !important;
+				}
+
+				#app,
+			  .overlay {
 					border-radius: 16px !important;
 					overflow: hidden !important;
 					background: black !important;
