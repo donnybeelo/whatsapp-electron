@@ -1,15 +1,11 @@
 {
   "name": "whatsapp-electron",
-  "desktopName": "com.github.dagmoller.whatsapp-electron",
-  "version": "1.2.5",
-  "description": "DagMoller's WhatsApp Electron Multi-Account App",
-  "author": "Diego Aguirre (DagMoller)",
+  "productName": "WhatsApp",
+  "desktopName": "WhatsApp",
+  "version": "1.3.0",
+  "description": "An unofficial WhatsApp desktop client built with Electron.",
+  "author": "Daniel Elia (donnybeelo)",
   "license": "ISC",
-  "keywords": [
-    "whatsapp",
-    "electron",
-    "multi-account"
-  ],
   "main": "./src/index.js",
   "scripts": {
     "start": "electron ./src",
@@ -25,8 +21,7 @@
       "icon": "./assets/whatsapp-icon-512x512.png",
       "category": "Network",
       "target": [
-        "AppImage",
-        "tar.xz"
+        "AppImage"
       ],
       "asarUnpack": [
         "**/assets/*.svg",

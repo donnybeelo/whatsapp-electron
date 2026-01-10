@@ -41,7 +41,7 @@ ipcRenderer.on("init-resources", (event, data) => {
 			ipcRenderer.send(Constants.event.updateBadgeIcon, data);
 		};
 
-		image.src = "https://raw.githubusercontent.com/dagmoller/whatsapp-electron/main/assets/whatsapp-icon-512x512.png";
+		image.src = "../assets/whatsapp-icon-outline.png";
 	});
 
 	contextBridge.exposeInMainWorld("electron", {
