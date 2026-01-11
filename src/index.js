@@ -339,11 +339,9 @@ class WhatsAppElectron {
 			height: this.bounds.height + Constants.offsets.window.height,
 			icon: this.baseIcon,
 			transparent: true,
+			hasShadow: true,
 			frame: false,
 			webSecurity: false,
-			webPreferences: {
-				preload: path.join(__dirname, "preload-bw.js"),
-			},
 		};
 
 		if (this.bounds.x != null) {
@@ -352,9 +350,6 @@ class WhatsAppElectron {
 		}
 
 		this.window = new BrowserWindow(options);
-		this.window.loadFile(
-			!app.isPackaged ? "index-bw.html" : "./src/index-bw.html",
-		);
 
 		this.window.webContents.send(Constants.event.initResources, {
 			constants: Constants,

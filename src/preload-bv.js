@@ -274,7 +274,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		console.log(`Starting new WhatsAppInstance...`);
 		wa = new WhatsAppInstance(data.id, data.name);
 		window.wa = wa;
-		
+
 		const style = document.createElement("style");
 		style.textContent = `
 			/* Make all headers draggable */
@@ -294,18 +294,23 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			}
 
 			html, body {
-				border-radius: 16px !important;
 				overflow: hidden !important;
+				background: transparent !important;
 			}
 
-			#app,
+			#app {
+				border-radius: 16px !important;
+				overflow: hidden !important;
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+				width: calc(100% - 20px) !important;
+				height: calc(100% - 20px) !important;
+				margin: 10px !important;
+				box-sizing: border-box !important;
+			}
+
 		  .overlay {
 				border-radius: 16px !important;
 				overflow: hidden !important;
-			}
-
-			body {
-				background-color: transparent !important;
 			}
 		`;
 		document.head.appendChild(style);
