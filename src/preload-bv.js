@@ -50,6 +50,38 @@ class WhatsAppInstance {
 			//console.log("Received Notification Click from Main...", tag);
 			this.openChat(tag);
 		});
+
+		ipcRenderer.on(Constants.event.buildBadgeIcon, (event, data) => {
+			console.log("Building badge icon...", data);
+			const img = new Image();
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				const ctx = canvas.getContext("2d");
+				canvas.width = img.width;
+				canvas.height = img.height;
+
+				ctx.drawImage(img, 0, 0, img.width, img.height);
+
+				const centerX = canvas.width * 0.75 - 2;
+				const centerY = canvas.height * 0.25 + 2;
+				const radius = 128;
+
+				ctx.beginPath();
+				ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+				ctx.fillStyle = "#ff3333";
+				ctx.fill();
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = "#003300";
+				ctx.stroke();
+
+				const dataUrl = canvas.toDataURL("image/png");
+				ipcRenderer.send(Constants.event.updateBadgeIcon, dataUrl);
+			};
+			img.onerror = (err) => {
+				console.error("Failed to load badge icon:", err);
+			};
+			img.src = data.iconDataUrl;
+		});
 	}
 
 	getId() {
@@ -290,7 +322,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				top: 5px !important;
 		    border-radius: 0 16px 16px 0 !important;
 			}
-			
+
 			[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
 		    width: calc(100% - 65px) !important;
 		    margin-left: 65px;
@@ -317,39 +349,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		`;
 		document.head.appendChild(style);
 
-		// Flag to prevent double initialization
-		let uiInitialized = false;
+		window.ipcRenderer = require("electron").ipcRenderer;
 
-		// Function to initialize UI when WhatsApp is fully loaded
-		const initializeUI = () => {
-			if (uiInitialized) {
-				console.log("UI already initialized, skipping...");
-				return;
-			}
-			uiInitialized = true;
-			console.log("WhatsApp loaded, initializing UI...");
-
-			window.ipcRenderer = require("electron").ipcRenderer;
-
-			// Add mutation observer to ensure dynamically added elements get border-radius
-			const borderObserver = new MutationObserver((mutations) => {
-				mutations.forEach((mutation) => {
-					mutation.addedNodes.forEach((node) => {
-						if (node.nodeType === 1 && node.parentElement === document.body) {
-							// Apply border-radius to top-level elements added to body
-							node.style.borderRadius = "16px";
-							node.style.overflow = "hidden";
-						}
-					});
-				});
-			});
-
-			borderObserver.observe(document.body, {
-				childList: true,
-				subtree: false,
-			});
-
-			// Add window control buttons
+		// Function to add window control buttons (can be called multiple times)
+		const addWindowControls = () => {
 			const sidebarHeader = document.querySelector(
 				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
 			);
@@ -413,7 +416,47 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				buttonContainer.appendChild(minimizeButton);
 
 				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
+				console.log("Window control buttons added");
 			}
+		};
+
+		// Periodically check if window controls need to be added
+		setInterval(() => {
+			addWindowControls();
+		}, 2000);
+
+		// Flag to prevent double initialization
+		let uiInitialized = false;
+
+		// Function to initialize UI when WhatsApp is fully loaded
+		const initializeUI = () => {
+			if (uiInitialized) {
+				console.log("UI already initialized, skipping...");
+				return;
+			}
+			uiInitialized = true;
+			console.log("WhatsApp loaded, initializing UI...");
+
+			// Add mutation observer to ensure dynamically added elements get border-radius
+			const borderObserver = new MutationObserver((mutations) => {
+				mutations.forEach((mutation) => {
+					mutation.addedNodes.forEach((node) => {
+						if (node.nodeType === 1 && node.parentElement === document.body) {
+							// Apply border-radius to top-level elements added to body
+							node.style.borderRadius = "16px";
+							node.style.overflow = "hidden";
+						}
+					});
+				});
+			});
+
+			borderObserver.observe(document.body, {
+				childList: true,
+				subtree: false,
+			});
+
+			// Add window control buttons initially
+			addWindowControls();
 		};
 
 		// Wait for WhatsApp to load by detecting when the sidebar header appears

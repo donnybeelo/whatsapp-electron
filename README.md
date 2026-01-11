@@ -11,10 +11,9 @@ Requires:
 - bun
 - git
 
-Run:
+Clone the repository:
 
 ```bash
-
 # Clone the repo
 git clone https://github.com/donnybeelo/whatsapp-electron.git
 
@@ -23,7 +22,22 @@ cd whatsapp-electron
 
 # Install dependencies
 bun install
+```
 
-# Start the app
+Run:
+
+```bash
 bun start
+```
+
+Build:
+
+```bash
+bun dist
+```
+
+Usage:
+
+```
+-b, --background       Start application in background (tray only)
 ```

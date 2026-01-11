@@ -27,6 +27,10 @@ if (!app.requestSingleInstanceLock()) {
 	return;
 }
 
+// Parse command line arguments
+const startInBackground =
+	process.argv.includes("--background") || process.argv.includes("-b");
+
 class WhatsAppElectron {
 	constructor() {
 		this.store = new Store();
@@ -70,7 +74,7 @@ class WhatsAppElectron {
 				label: "Help",
 				submenu: [
 					{
-						label: "Version undefined by me",
+						label: `Version ${Constants.version} by Daniel Elia`,
 						enabled: false,
 					},
 					{ type: "separator" },
@@ -344,6 +348,7 @@ class WhatsAppElectron {
 			hasShadow: true,
 			frame: false,
 			webSecurity: false,
+			show: !startInBackground,
 		};
 
 		if (this.bounds.x != null) {
@@ -493,7 +498,16 @@ class WhatsAppElectron {
 			return;
 		}
 
-		this.window.webContents.send(Constants.event.buildBadgeIcon, counter);
+		// Use the first available view to build the badge icon
+		const viewIds = Object.keys(this.instances);
+		if (viewIds.length > 0 && this.instances[viewIds[0]].view) {
+			// Convert icon to data URL so it can be loaded in the webview
+			const iconDataUrl = nativeImage.createFromPath(this.baseIcon).toDataURL();
+			this.instances[viewIds[0]].view.webContents.send(
+				Constants.event.buildBadgeIcon,
+				{ counter, iconDataUrl },
+			);
+		}
 	}
 
 	showHide(hide = true) {
