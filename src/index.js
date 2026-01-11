@@ -61,7 +61,7 @@ class WhatsAppElectron {
 						accelerator: "Alt+a",
 						click: () => {
 							this.removeViews();
-							this.window.setTitle(`${Constants.appName} - Accounts`);
+							this.window.setTitle(Constants.appName);
 						},
 					},
 				],
@@ -171,7 +171,7 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.newRendererNotification, (event, data) => {
 			//console.log("New Renderer Notification...", data);
 			const n = new Notification({
-				title: `[${this.instances[data.id].name}] - ${data.title}`,
+				title: data.title,
 				body: data.options.body,
 				icon: nativeImage.createFromDataURL(data.icon),
 			});
@@ -337,6 +337,8 @@ class WhatsAppElectron {
 		const options = {
 			width: this.bounds.width + Constants.offsets.window.width,
 			height: this.bounds.height + Constants.offsets.window.height,
+			minWidth: 750,
+			minHeight: 550,
 			icon: this.baseIcon,
 			transparent: true,
 			hasShadow: true,
@@ -372,7 +374,7 @@ class WhatsAppElectron {
 			this.window.hide();
 		});
 
-		this.window.setTitle(`${Constants.appName} - Accounts`);
+		this.window.setTitle(Constants.appName);
 
 		this.window.on("focus", () => {
 			const views = this.window.contentView.children;
@@ -443,7 +445,7 @@ class WhatsAppElectron {
 		//console.log("setCurrentView:", id);
 		const instance = this.instances[id];
 
-		this.window.setTitle(`${Constants.appName} - ${instance.name}`);
+		this.window.setTitle(Constants.appName);
 		this.replaceView(instance.view);
 
 		if (this.menu != undefined) {
