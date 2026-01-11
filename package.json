@@ -2,7 +2,7 @@
 	"name": "whatsapp",
 	"productName": "WhatsApp",
 	"desktopName": "WhatsApp",
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"description": "An unofficial WhatsApp desktop client built with Electron.",
 	"author": "Daniel Elia (donnybeelo)",
 	"license": "ISC",
