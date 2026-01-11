@@ -8,7 +8,7 @@ Constants = {
 	whatsapp: {},
 };
 
-Constants.version = "1.3.1";
+Constants.version = require('../package.json').version;
 
 Constants.whatsapp.url = "https://web.whatsapp.com/";
 Constants.whatsapp.userAgent =
