@@ -320,7 +320,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			return `
 				/* Make all headers draggable */
-				header {
+				header[tabindex="0"] {
 					-webkit-app-region: drag !important;
 					z-index: 9999 !important;
 				}
@@ -347,7 +347,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					background: ${isWindows ? "#111b21" : "transparent"} !important;
 				}
 
-				#app {
+				#app,
+				[data-animate-modal-backdrop="true"] {
 					border-radius: ${borderRadius} !important;
 					overflow: hidden !important;
 					box-shadow: ${boxShadow} !important;
