@@ -338,15 +338,17 @@ class WhatsAppElectron {
 	}
 
 	createWindow() {
+		const isWindows = process.platform === "win32";
 		const options = {
 			width: this.bounds.width + Constants.offsets.window.width,
 			height: this.bounds.height + Constants.offsets.window.height,
 			minWidth: 750,
 			minHeight: 550,
 			icon: this.baseIcon,
-			transparent: true,
+			transparent: !isWindows,
 			hasShadow: true,
 			frame: false,
+			thickFrame: isWindows, // Enables native resize borders on Windows without title bar
 			webSecurity: false,
 			show: !startInBackground,
 		};
@@ -390,10 +392,15 @@ class WhatsAppElectron {
 	createView(id, name) {
 		this.instances[id] = { id: id, name: name, unread: 0, view: null };
 
+		// Determine preload path - handle both packaged and development modes
+		const preloadPath = app.isPackaged
+			? path.join(app.getAppPath(), "src", "preload-bv.js")
+			: path.join(__dirname, "preload-bv.js");
+
 		const view = new WebContentsView({
 			webPreferences: {
 				partition: `persist:${id}`,
-				preload: path.join(__dirname, "preload-bv.js"),
+				preload: preloadPath,
 				spellcheck: true,
 				contextIsolation: false,
 			},
@@ -412,13 +419,17 @@ class WhatsAppElectron {
 			return { action: "deny" };
 		});
 
-		setTimeout(function () {
-			view.webContents.send(Constants.event.initWhatsAppInstance, {
-				id: id,
-				name: name,
-				constants: Constants,
-			});
-		}, 2000);
+		// Wait for the page to finish loading before sending init event
+		view.webContents.on("did-finish-load", () => {
+			// Add a small delay to ensure preload script is ready
+			setTimeout(() => {
+				view.webContents.send(Constants.event.initWhatsAppInstance, {
+					id: id,
+					name: name,
+					constants: Constants,
+				});
+			}, 500);
+		});
 		//view.webContents.send(Constants.event.initWhatsAppInstance, {id: id, name: name, constants: Constants});
 
 		let menuItem = {

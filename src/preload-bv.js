@@ -307,6 +307,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		wa = new WhatsAppInstance(data.id, data.name);
 		window.wa = wa;
 
+		const isWindows = process.platform === "win32";
+
 		const style = document.createElement("style");
 		style.textContent = `
 			/* Make all headers draggable */
@@ -317,15 +319,15 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			.overlay {
 				width: calc(100% - 75px) !important;
-		    left: 70px !important;
+				left: 70px !important;
 				height: calc(100% - 10px) !important;
 				top: 5px !important;
-		    border-radius: 0 16px 16px 0 !important;
+				border-radius: 0 16px 16px 0 !important;
 			}
 
 			[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
-		    width: calc(100% - 65px) !important;
-		    margin-left: 65px;
+				width: calc(100% - 65px) !important;
+				margin-left: 65px;
 			}
 
 			header button, [role="button"] {
@@ -334,16 +336,16 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			html, body {
 				overflow: hidden !important;
-				background: transparent !important;
+				background: ${isWindows ? "#111b21" : "transparent"} !important;
 			}
 
 			#app {
-				border-radius: 16px !important;
+				border-radius: ${isWindows ? "0" : "16px"} !important;
 				overflow: hidden !important;
-				box-shadow: 0 0 5px rgba(0, 0, 0, 0.5) !important;
-				width: calc(100% - 10px) !important;
-				height: calc(100% - 10px) !important;
-				margin: 5px !important;
+				box-shadow: ${isWindows ? "none" : "0 0 5px rgba(0, 0, 0, 0.5)"} !important;
+				width: ${isWindows ? "100%" : "calc(100% - 10px)"} !important;
+				height: ${isWindows ? "100%" : "calc(100% - 10px)"} !important;
+				margin: ${isWindows ? "0" : "5px"} !important;
 				box-sizing: border-box !important;
 			}
 		`;
@@ -443,8 +445,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					mutation.addedNodes.forEach((node) => {
 						if (node.nodeType === 1 && node.parentElement === document.body) {
 							// Apply border-radius to top-level elements added to body
-							node.style.borderRadius = "16px";
-							node.style.overflow = "hidden";
+							if (!isWindows) {
+								node.style.borderRadius = "16px";
+								node.style.overflow = "hidden";
+							}
 						}
 					});
 				});

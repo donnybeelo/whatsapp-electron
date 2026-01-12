@@ -8,7 +8,7 @@ Constants = {
 	whatsapp: {},
 };
 
-Constants.version = require('../package.json').version;
+Constants.version = require("../package.json").version;
 
 Constants.whatsapp.url = "https://web.whatsapp.com/";
 Constants.whatsapp.userAgent =
@@ -47,9 +47,12 @@ const init = (lang) => {
 
 	switch (process.platform) {
 		case "win32":
-			Constants.offsets.window.y = -30;
-			Constants.offsets.view.width = -15;
-			Constants.offsets.view.height = -60;
+			Constants.offsets.window.x = 0;
+			Constants.offsets.window.y = 0;
+			Constants.offsets.view.x = 0;
+			Constants.offsets.view.y = 0;
+			Constants.offsets.view.width = 0;
+			Constants.offsets.view.height = 0;
 			break;
 	}
 
