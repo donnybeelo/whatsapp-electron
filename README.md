@@ -1,5 +1,5 @@
 # WhatsApp Electron
-WhatsApp Client built on Electron with multi-account support!<br>
+An Electron wrapper for WhatsApp Web<br>
 Tested on Linux and Windows.
 
 Fork from https://github.com/dagmoller/whatsapp-electron.git
