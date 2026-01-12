@@ -34,6 +34,7 @@ Constants.event.reloadAccounts = "reload-accounts";
 Constants.event.minimizeWindow = "minimize-window";
 Constants.event.maximizeWindow = "maximize-window";
 Constants.event.closeWindow = "close-window";
+Constants.event.windowMaximizeStateChanged = "window-maximize-state-changed";
 
 const init = (lang) => {
 	switch (lang) {

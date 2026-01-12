@@ -9,6 +9,7 @@ const {
 	Notification,
 	MenuItem,
 	session,
+	screen,
 } = require("electron");
 const Store = require("electron-store");
 const path = require("node:path");
@@ -366,9 +367,11 @@ class WhatsAppElectron {
 
 		this.window.on("move", () => {
 			this.storeWindowBounds();
+			this.checkSnappedState();
 		});
 		this.window.on("resize", () => {
 			this.storeWindowBounds();
+			this.checkSnappedState();
 		});
 
 		this.window.on("close", (e) => {
@@ -387,6 +390,59 @@ class WhatsAppElectron {
 			const views = this.window.contentView.children;
 			if (views.length > 0) views[views.length - 1].webContents.focus();
 		});
+
+		// Broadcast maximize state changes to all views
+		this.window.on("maximize", () => {
+			this._lastSnappedOrMaximized = true;
+			this.broadcastMaximizeState(true);
+		});
+
+		this.window.on("unmaximize", () => {
+			// Check if it's snapped after unmaximize
+			setTimeout(() => this.checkSnappedState(), 50);
+		});
+
+		// Track last snapped state to avoid redundant broadcasts
+		this._lastSnappedOrMaximized = false;
+	}
+
+	checkSnappedState() {
+		if (this.window.isMaximized()) {
+			// Already handled by maximize event
+			return;
+		}
+
+		const isSnapped = this.isWindowSnapped();
+
+		// Only broadcast if state changed
+		if (isSnapped !== this._lastSnappedOrMaximized) {
+			this._lastSnappedOrMaximized = isSnapped;
+			this.broadcastMaximizeState(isSnapped);
+		}
+	}
+
+	isWindowSnapped() {
+		const bounds = this.window.getBounds();
+		const display = screen.getDisplayMatching(bounds);
+		const workArea = display.workArea;
+
+		// Check if window fills most of the screen width OR height
+		const widthPercent = bounds.width / workArea.width;
+		const heightPercent = bounds.height / workArea.height;
+
+		return widthPercent >= 0.98 || heightPercent >= 0.9;
+	}
+
+	broadcastMaximizeState(isMaximized) {
+		// Send to all WhatsApp views
+		for (const id in this.instances) {
+			if (this.instances[id].view) {
+				this.instances[id].view.webContents.send(
+					Constants.event.windowMaximizeStateChanged,
+					{ isMaximized },
+				);
+			}
+		}
 	}
 
 	createView(id, name) {
@@ -428,6 +484,13 @@ class WhatsAppElectron {
 					name: name,
 					constants: Constants,
 				});
+				// Send initial maximize/snapped state
+				const isMaximizedOrSnapped =
+					this.window.isMaximized() || this.isWindowSnapped();
+				view.webContents.send(Constants.event.windowMaximizeStateChanged, {
+					isMaximized: isMaximizedOrSnapped,
+				});
+				this._lastSnappedOrMaximized = isMaximizedOrSnapped;
 			}, 500);
 		});
 		//view.webContents.send(Constants.event.initWhatsAppInstance, {id: id, name: name, constants: Constants});

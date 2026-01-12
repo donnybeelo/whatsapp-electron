@@ -308,50 +308,90 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		window.wa = wa;
 
 		const isWindows = process.platform === "win32";
+		let isMaximized = false;
+
+		// Generate CSS based on maximize state
+		const generateStyles = (maximized) => {
+			const borderRadius = !isWindows && !maximized ? "16px" : "0";
+			const boxShadow =
+				!isWindows && !maximized ? "0 0 5px rgba(0, 0, 0, 0.5)" : "none";
+			const size = !isWindows && !maximized ? "calc(100% - 10px)" : "100%";
+			const margin = !isWindows && !maximized ? "5px" : "0";
+
+			return `
+				/* Make all headers draggable */
+				header {
+					-webkit-app-region: drag !important;
+					z-index: 9999 !important;
+				}
+
+				.overlay {
+					width: calc(100% - 75px) !important;
+					left: 70px !important;
+					height: calc(100% - 10px) !important;
+					top: 5px !important;
+					border-radius: 0 ${borderRadius} ${borderRadius} 0 !important;
+				}
+
+				[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
+					width: calc(100% - 65px) !important;
+					margin-left: 65px;
+				}
+
+				header button, [role="button"] {
+					-webkit-app-region: no-drag !important;
+				}
+
+				html, body {
+					overflow: hidden !important;
+					background: ${isWindows ? "#111b21" : "transparent"} !important;
+				}
+
+				#app {
+					border-radius: ${borderRadius} !important;
+					overflow: hidden !important;
+					box-shadow: ${boxShadow} !important;
+					width: ${size} !important;
+					height: ${size} !important;
+					margin: ${margin} !important;
+					box-sizing: border-box !important;
+				}
+			`;
+		};
 
 		const style = document.createElement("style");
-		style.textContent = `
-			/* Make all headers draggable */
-			header {
-				-webkit-app-region: drag !important;
-				z-index: 9999 !important;
-			}
-
-			.overlay {
-				width: calc(100% - 75px) !important;
-				left: 70px !important;
-				height: calc(100% - 10px) !important;
-				top: 5px !important;
-				border-radius: 0 16px 16px 0 !important;
-			}
-
-			[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
-				width: calc(100% - 65px) !important;
-				margin-left: 65px;
-			}
-
-			header button, [role="button"] {
-				-webkit-app-region: no-drag !important;
-			}
-
-			html, body {
-				overflow: hidden !important;
-				background: ${isWindows ? "#111b21" : "transparent"} !important;
-			}
-
-			#app {
-				border-radius: ${isWindows ? "0" : "16px"} !important;
-				overflow: hidden !important;
-				box-shadow: ${isWindows ? "none" : "0 0 5px rgba(0, 0, 0, 0.5)"} !important;
-				width: ${isWindows ? "100%" : "calc(100% - 10px)"} !important;
-				height: ${isWindows ? "100%" : "calc(100% - 10px)"} !important;
-				margin: ${isWindows ? "0" : "5px"} !important;
-				box-sizing: border-box !important;
-			}
-		`;
+		style.id = "whatsapp-electron-style";
+		style.textContent = generateStyles(false);
 		document.head.appendChild(style);
 
 		window.ipcRenderer = require("electron").ipcRenderer;
+
+		// Function to update styles based on maximize state
+		const updateMaximizeStyles = (maximized) => {
+			isMaximized = maximized;
+			const styleEl = document.getElementById("whatsapp-electron-style");
+			if (styleEl) {
+				styleEl.textContent = generateStyles(maximized);
+			}
+
+			// Also update any dynamically added elements
+			if (!isWindows) {
+				document.querySelectorAll("body > *").forEach((node) => {
+					if (node.nodeType === 1 && node.id !== "whatsapp-electron-style") {
+						node.style.borderRadius = maximized ? "0" : "16px";
+					}
+				});
+			}
+		};
+
+		// Listen for maximize state changes
+		ipcRenderer.on(
+			Constants.event.windowMaximizeStateChanged,
+			(event, data) => {
+				console.log("Maximize state changed:", data.isMaximized);
+				updateMaximizeStyles(data.isMaximized);
+			},
+		);
 
 		// Function to add window control buttons (can be called multiple times)
 		const addWindowControls = () => {
@@ -445,7 +485,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					mutation.addedNodes.forEach((node) => {
 						if (node.nodeType === 1 && node.parentElement === document.body) {
 							// Apply border-radius to top-level elements added to body
-							if (!isWindows) {
+							if (!isWindows && !isMaximized) {
 								node.style.borderRadius = "16px";
 								node.style.overflow = "hidden";
 							}
