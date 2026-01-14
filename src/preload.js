@@ -317,6 +317,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				!isWindows && !maximized ? "0 0 5px rgba(0, 0, 0, 0.5)" : "none";
 			const size = !isWindows && !maximized ? "calc(100% - 10px)" : "100%";
 			const margin = !isWindows && !maximized ? "5px" : "0";
+			const border = !isWindows && !maximized ? "1px" : "0";
 
 			return `
 				/* Make all headers draggable */
@@ -356,6 +357,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					height: ${size} !important;
 					margin: ${margin} !important;
 					box-sizing: border-box !important;
+					border: ${border} solid #aaaa;
+					@media (prefers-color-scheme: dark) {
+						border: ${border}	 solid #333a;
+					}
 				}
 			`;
 		};

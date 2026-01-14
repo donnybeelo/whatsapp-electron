@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run WhatsApp Electron (single window)",
+			"type": "shell",
+			"command": "npx electron .",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}
