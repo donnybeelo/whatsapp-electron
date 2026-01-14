@@ -258,7 +258,8 @@ class WhatsAppElectron {
 		} else {
 			await this.window.loadURL(Constants.whatsapp.url);
 		}
-		this.window.show();
+		if (!startInBackground)
+			this.window.show();
 
 		this.window.on("move", () => {
 			this.storeWindowBounds();
