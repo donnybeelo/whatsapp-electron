@@ -468,7 +468,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		// Listen for maximize state changes
 		ipcRenderer.on(
 			Constants.event.windowMaximizeStateChanged,
-			(event, data) => {
+			(_event, data) => {
+				isMaximized = data.isMaximized
 				console.log("Maximize state changed:", data.isMaximized);
 				updateMaximizeStyles(data.isMaximized);
 			},
@@ -496,7 +497,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				const closeButton = document.createElement("div");
 				closeButton.className = buttonClasses;
 				closeButton.style.cssText =
-					"background-color: #f006; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
+					"backdrop-filter: brightness(0) saturate(100%) invert(10%) sepia(100%) saturate(7476%) hue-rotate(3deg) brightness(101%) contrast(109%) opacity(0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
 				const closeButtonSVG =
 					'<path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.89 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"></path>';
 				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
@@ -512,7 +513,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
 				maximizeButton.innerHTML = generateButtonHTML(
 					"Maximize",
-					maximizeButtonSVG,
+					isMaximized ? restoreButtonSVG : maximizeButtonSVG,
 				);
 				const actualMaximizeButton = maximizeButton.querySelector("button");
 				actualMaximizeButton.addEventListener("click", () => {

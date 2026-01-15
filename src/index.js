@@ -264,6 +264,9 @@ class WhatsAppElectron {
 				name: "WhatsApp",
 				constants: Constants,
 			});
+			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
+				isMaximized: this.window.isMaximized(),
+			});
 		});
 
 		// Connectivity check
