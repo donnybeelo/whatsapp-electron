@@ -1,11 +1,11 @@
 const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  Menu,
-  Tray,
-  nativeImage,
-  Notification,
+	app,
+	BrowserWindow,
+	ipcMain,
+	Menu,
+	Tray,
+	nativeImage,
+	Notification,
 } = require("electron");
 const Store = require("electron-store");
 const path = require("node:path");
@@ -33,9 +33,9 @@ class WhatsAppElectron {
 		this.baseIcon = !app.isPackaged
 			? path.join(__dirname, "../assets/whatsapp-icon-outline.png")
 			: path.join(
-				process.resourcesPath,
-				"app.asar.unpacked/assets/whatsapp-icon-outline.png",
-			);
+					process.resourcesPath,
+					"app.asar.unpacked/assets/whatsapp-icon-outline.png",
+				);
 		this.isQuit = false;
 
 		this.bounds = this.store.get("bounds");
@@ -86,11 +86,11 @@ class WhatsAppElectron {
 
 	_forceReload() {
 		// Check for internet and reload the correct page
-		this.checkInternet().then(isOnline => {
+		this.checkInternet().then((isOnline) => {
 			if (isOnline) {
 				this.window.loadURL(Constants.whatsapp.url);
 			} else {
-				this.window.loadFile(path.join(__dirname, 'offline.html'));
+				this.window.loadFile(path.join(__dirname, "offline.html"));
 				this.establishRefreshInterval();
 			}
 		});
@@ -99,16 +99,16 @@ class WhatsAppElectron {
 	establishRefreshInterval() {
 		this._pollInterval = setInterval(() => {
 			if (!this.window) return;
-			this.checkInternet().then(isOnline => {
+			this.checkInternet().then((isOnline) => {
 				const currentURL = this.window.webContents.getURL();
-				const isOffline = currentURL.endsWith('offline.html');
+				const isOffline = currentURL.endsWith("offline.html");
 				if (isOnline && isOffline) {
 					// If online and currently showing offline.html, restore WhatsApp
 					this.window.loadURL(Constants.whatsapp.url);
 					clearInterval(this._pollInterval);
 				} else if (!isOnline && !isOffline) {
 					// If offline and currently showing WhatsApp, show offline.html
-					this.window.loadFile(path.join(__dirname, 'offline.html'));
+					this.window.loadFile(path.join(__dirname, "offline.html"));
 				}
 			});
 		}, 10000);
@@ -148,7 +148,7 @@ class WhatsAppElectron {
 		this.tray.on("click", () => {
 			this.showHide();
 		});
-		
+
 		//Events
 		// Relay unread badge updates from renderer
 		ipcMain.on(Constants.event.updateUnreadMessages, (event, data) => {
@@ -185,7 +185,7 @@ class WhatsAppElectron {
 				this._forceReload();
 			});
 		});
-		
+
 		ipcMain.on(Constants.event.minimizeWindow, () => {
 			this.window.minimize();
 		});
@@ -211,24 +211,24 @@ class WhatsAppElectron {
 			? path.join(app.getAppPath(), "src", "preload.js")
 			: path.join(__dirname, "preload.js");
 		const options = {
-      width: this.bounds.width + Constants.offsets.window.width,
-      height: this.bounds.height + Constants.offsets.window.height,
-      minWidth: 750,
-      minHeight: 550,
-      icon: this.baseIcon,
-      transparent: !isWindows,
-      hasShadow: true,
-      frame: false,
-      thickFrame: isWindows,
-      show: !startInBackground,
-      webPreferences: {
-          partition: 'persist:default',
-          preload: preloadPath,
-          spellcheck: true,
-          contextIsolation: false,
-          webSecurity: false, 
-      },
-    };
+			width: this.bounds.width + Constants.offsets.window.width,
+			height: this.bounds.height + Constants.offsets.window.height,
+			minWidth: 750,
+			minHeight: 550,
+			icon: this.baseIcon,
+			transparent: !isWindows,
+			hasShadow: true,
+			frame: false,
+			thickFrame: isWindows,
+			show: !startInBackground,
+			webPreferences: {
+				partition: "persist:default",
+				preload: preloadPath,
+				spellcheck: true,
+				contextIsolation: false,
+				webSecurity: false,
+			},
+		};
 
 		if (this.bounds.x != null) {
 			options.x = this.bounds.x + Constants.offsets.window.x;
@@ -236,10 +236,10 @@ class WhatsAppElectron {
 		}
 
 		this.window = new BrowserWindow(options);
-		
+
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
-			require('electron').shell.openExternal(url);
-			return { action: 'deny' };
+			require("electron").shell.openExternal(url);
+			return { action: "deny" };
 		});
 		this.window.webContents.send(Constants.event.initResources, {
 			constants: Constants,
@@ -247,32 +247,35 @@ class WhatsAppElectron {
 
 		// Relay maximize/minimize/close events to renderer for CSS
 		this.window.on("maximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: true });
+			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
+				isMaximized: true,
+			});
 		});
 		this.window.on("unmaximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: false });
+			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
+				isMaximized: false,
+			});
 		});
 
 		// Send constants/init to renderer after load
-		this.window.webContents.on('did-finish-load', () => {
+		this.window.webContents.on("did-finish-load", () => {
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
-				id: 'main',
-				name: 'WhatsApp',
+				id: "main",
+				name: "WhatsApp",
 				constants: Constants,
 			});
 		});
 
 		// Connectivity check
-		this.checkInternet().then(isOnline => {			
+		this.checkInternet().then((isOnline) => {
 			if (!isOnline) {
-				this.window.loadFile(path.join(__dirname, 'offline.html'));
+				this.window.loadFile(path.join(__dirname, "offline.html"));
 			} else {
 				this.window.loadURL(Constants.whatsapp.url);
 			}
 		});
-		
-		if (!startInBackground)
-			this.window.show();
+
+		if (!startInBackground) this.window.show();
 
 		this.window.on("move", () => {
 			this.storeWindowBounds();
@@ -296,13 +299,12 @@ class WhatsAppElectron {
 	async checkInternet() {
 		// Try to resolve a DNS or fetch a known URL
 		return new Promise((resolve) => {
-			require('dns').resolve('whatsapp.com', (err) => {
+			require("dns").resolve("whatsapp.com", (err) => {
 				if (err) resolve(false);
 				else resolve(true);
 			});
 		});
 	}
-
 
 	storeWindowBounds() {
 		this.bounds = this.window.getBounds();
@@ -316,10 +318,10 @@ class WhatsAppElectron {
 		} else {
 			// Convert icon to data URL so it can be loaded in the webview
 			const iconDataUrl = nativeImage.createFromPath(this.baseIcon).toDataURL();
-			this.window.webContents.send(
-				Constants.event.buildBadgeIcon,
-				{ counter, iconDataUrl },
-			);
+			this.window.webContents.send(Constants.event.buildBadgeIcon, {
+				counter,
+				iconDataUrl,
+			});
 		}
 	}
 
