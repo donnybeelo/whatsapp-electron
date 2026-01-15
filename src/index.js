@@ -86,13 +86,14 @@ class WhatsAppElectron {
 
 	_forceReload() {
 		// Check for internet and reload the correct page
-		const isOnline = this.checkInternet();
-		if (isOnline) {
-			this.window.loadURL(Constants.whatsapp.url);
-		} else {
-			this.window.loadFile(path.join(__dirname, 'offline.html'));
-			this.establishRefreshInterval();
-		}
+		this.checkInternet().then(isOnline => {
+			if (isOnline) {
+				this.window.loadURL(Constants.whatsapp.url);
+			} else {
+				this.window.loadFile(path.join(__dirname, 'offline.html'));
+				this.establishRefreshInterval();
+			}
+		});
 	}
 
 	establishRefreshInterval() {
@@ -168,7 +169,7 @@ class WhatsAppElectron {
 				icon: nativeImage.createFromDataURL(data.icon),
 			});
 			n.on("click", (event) => {
-				console.log("Notification Clicked...", data.id, data.options.tag);
+				// console.log("Notification Clicked...", data.id, data.options.tag);
 				this.showHide(false);
 				this.window.webContents.send(
 					Constants.event.fireNotificationClick,
@@ -210,24 +211,24 @@ class WhatsAppElectron {
 			? path.join(app.getAppPath(), "src", "preload.js")
 			: path.join(__dirname, "preload.js");
 		const options = {
-			width: this.bounds.width + Constants.offsets.window.width,
-			height: this.bounds.height + Constants.offsets.window.height,
-			minWidth: 750,
-			minHeight: 550,
-			icon: this.baseIcon,
-			transparent: !isWindows,
-			hasShadow: true,
-			frame: false,
-			thickFrame: isWindows,
-			webSecurity: false,
-			spellcheck: true,
-			contextIsolation: false,
-			show: !startInBackground,
-			webPreferences: {
-				partition: 'persist:default',
-				preload: preloadPath,
-			},
-		};
+      width: this.bounds.width + Constants.offsets.window.width,
+      height: this.bounds.height + Constants.offsets.window.height,
+      minWidth: 750,
+      minHeight: 550,
+      icon: this.baseIcon,
+      transparent: !isWindows,
+      hasShadow: true,
+      frame: false,
+      thickFrame: isWindows,
+      show: !startInBackground,
+      webPreferences: {
+          partition: 'persist:default',
+          preload: preloadPath,
+          spellcheck: true,
+          contextIsolation: false,
+          webSecurity: false, 
+      },
+    };
 
 		if (this.bounds.x != null) {
 			options.x = this.bounds.x + Constants.offsets.window.x;
@@ -262,12 +263,14 @@ class WhatsAppElectron {
 		});
 
 		// Connectivity check
-		const isOnline = this.checkInternet();
-		if (!isOnline) {
-			this.window.loadFile(path.join(__dirname, 'offline.html'));
-		} else {
-			this.window.loadURL(Constants.whatsapp.url);
-		}
+		this.checkInternet().then(isOnline => {			
+			if (!isOnline) {
+				this.window.loadFile(path.join(__dirname, 'offline.html'));
+			} else {
+				this.window.loadURL(Constants.whatsapp.url);
+			}
+		});
+		
 		if (!startInBackground)
 			this.window.show();
 
