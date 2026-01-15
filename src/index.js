@@ -84,9 +84,9 @@ class WhatsAppElectron {
 		if (process.platform == "win32") app.setAppUserModelId(Constants.appName);
 	}
 
-	async _forceReload() {
+	_forceReload() {
 		// Check for internet and reload the correct page
-		const isOnline = await this.checkInternet();
+		const isOnline = this.checkInternet();
 		if (isOnline) {
 			this.window.loadURL(Constants.whatsapp.url);
 		} else {
@@ -113,10 +113,10 @@ class WhatsAppElectron {
 		}, 10000);
 	}
 
-	async init() {
+	init() {
 		this._initElectronApp();
 
-		await this.createWindow();
+		this.createWindow();
 
 		// set version on menu
 		this.menuTemplate[0].submenu[0].label = `Version ${Constants.version}`;
@@ -147,67 +147,8 @@ class WhatsAppElectron {
 		this.tray.on("click", () => {
 			this.showHide();
 		});
-
-		this.establishRefreshInterval();
-	}
-
-	async createWindow() {
-		const isWindows = process.platform === "win32";
-		const preloadPath = app.isPackaged
-			? path.join(app.getAppPath(), "src", "preload.js")
-			: path.join(__dirname, "preload.js");
-		const options = {
-			width: this.bounds.width + Constants.offsets.window.width,
-			height: this.bounds.height + Constants.offsets.window.height,
-			minWidth: 750,
-			minHeight: 550,
-			icon: this.baseIcon,
-			transparent: !isWindows,
-			hasShadow: true,
-			frame: false,
-			thickFrame: isWindows,
-			webSecurity: false,
-			spellcheck: true,
-			contextIsolation: false,
-			show: !startInBackground,
-			webPreferences: {
-				partition: 'persist:default',
-				preload: preloadPath,
-			},
-		};
-
-		if (this.bounds.x != null) {
-			options.x = this.bounds.x + Constants.offsets.window.x;
-			options.y = this.bounds.y + Constants.offsets.window.y;
-		}
-
-		this.window = new BrowserWindow(options);
-
-		// Prevent WhatsApp from opening new windows (popups) so preload always runs
-		this.window.webContents.setWindowOpenHandler(({ url }) => {
-			require('electron').shell.openExternal(url);
-			return { action: 'deny' };
-		});
-
-		// Relay maximize/minimize/close events to renderer for CSS
-		this.window.on("maximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: true });
-		});
-		this.window.on("unmaximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: false });
-		});
-
-		// Relay window control events from renderer
-		ipcMain.on(Constants.event.maximizeWindow, () => {
-			if (!this.window.isMaximized()) this.window.maximize();
-		});
-		ipcMain.on(Constants.event.minimizeWindow, () => {
-			this.window.minimize();
-		});
-		ipcMain.on(Constants.event.closeWindow, () => {
-			this.window.close();
-		});
-
+		
+		//Events
 		// Relay unread badge updates from renderer
 		ipcMain.on(Constants.event.updateUnreadMessages, (event, data) => {
 			this.updateTrayBadgeCounter(data.unread);
@@ -243,6 +184,73 @@ class WhatsAppElectron {
 				this._forceReload();
 			});
 		});
+		
+		ipcMain.on(Constants.event.minimizeWindow, () => {
+			this.window.minimize();
+		});
+
+		ipcMain.on(Constants.event.maximizeWindow, () => {
+			if (this.window.isMaximized()) {
+				this.window.unmaximize();
+			} else {
+				this.window.maximize();
+			}
+		});
+
+		ipcMain.on(Constants.event.closeWindow, () => {
+			this.window.close();
+		});
+
+		this.establishRefreshInterval();
+	}
+
+	createWindow() {
+		const isWindows = process.platform === "win32";
+		const preloadPath = app.isPackaged
+			? path.join(app.getAppPath(), "src", "preload.js")
+			: path.join(__dirname, "preload.js");
+		const options = {
+			width: this.bounds.width + Constants.offsets.window.width,
+			height: this.bounds.height + Constants.offsets.window.height,
+			minWidth: 750,
+			minHeight: 550,
+			icon: this.baseIcon,
+			transparent: !isWindows,
+			hasShadow: true,
+			frame: false,
+			thickFrame: isWindows,
+			webSecurity: false,
+			spellcheck: true,
+			contextIsolation: false,
+			show: !startInBackground,
+			webPreferences: {
+				partition: 'persist:default',
+				preload: preloadPath,
+			},
+		};
+
+		if (this.bounds.x != null) {
+			options.x = this.bounds.x + Constants.offsets.window.x;
+			options.y = this.bounds.y + Constants.offsets.window.y;
+		}
+
+		this.window = new BrowserWindow(options);
+		
+		this.window.webContents.setWindowOpenHandler(({ url }) => {
+			require('electron').shell.openExternal(url);
+			return { action: 'deny' };
+		});
+		this.window.webContents.send(Constants.event.initResources, {
+			constants: Constants,
+		});
+
+		// Relay maximize/minimize/close events to renderer for CSS
+		this.window.on("maximize", () => {
+			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: true });
+		});
+		this.window.on("unmaximize", () => {
+			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, { isMaximized: false });
+		});
 
 		// Send constants/init to renderer after load
 		this.window.webContents.on('did-finish-load', () => {
@@ -254,11 +262,11 @@ class WhatsAppElectron {
 		});
 
 		// Connectivity check
-		const isOnline = await this.checkInternet();
+		const isOnline = this.checkInternet();
 		if (!isOnline) {
-			await this.window.loadFile(path.join(__dirname, 'offline.html'));
+			this.window.loadFile(path.join(__dirname, 'offline.html'));
 		} else {
-			await this.window.loadURL(Constants.whatsapp.url);
+			this.window.loadURL(Constants.whatsapp.url);
 		}
 		if (!startInBackground)
 			this.window.show();
