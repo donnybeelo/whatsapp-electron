@@ -167,6 +167,8 @@ class WhatsAppElectron {
 			frame: false,
 			thickFrame: isWindows,
 			webSecurity: false,
+			spellcheck: true,
+			contextIsolation: false,
 			show: !startInBackground,
 			webPreferences: {
 				partition: 'persist:default',

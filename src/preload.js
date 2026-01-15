@@ -7,10 +7,6 @@ class WhatsAppInstance {
 		this.name = name;
 		this.lastUnread = 0;
 
-		// Module Raid
-		this.mrid = null;
-		this.mrobj = {};
-
 		// Notification Wrapper
 		window.oldNotification = Notification;
 		window.Notification = NotificationServer;
@@ -20,20 +16,7 @@ class WhatsAppInstance {
 
 		// Mutation Oberver
 		this.observer = new MutationObserver((mutations) => {
-			mutations.forEach((mutation) => {
-				this.countUnread();
-
-				if (this.mrid == null) {
-					if (typeof mutation.target.ariaLabel === "string") {
-						if (
-							mutation.target.ariaLabel.search(
-								Constants.whatsapp.profilePicture,
-							) != -1
-						)
-							this.loadModuleRaid();
-					}
-				}
-			});
+			mutations.forEach(() => this.countUnread());
 		});
 
 		setTimeout(() => {
@@ -88,94 +71,18 @@ class WhatsAppInstance {
 		return this.id;
 	}
 
-	loadModuleRaid() {
-		console.log("Loading Module Raid...");
-		this.mrid = Math.random().toString(36).substring(7);
-
-		if (parseFloat(window.Debug.VERSION) < 2.3) {
-			window.webpackChunkwhatsapp_web_client.push([
-				[this.mrid],
-				{},
-				(e) => {
-					Object.keys(e.m).forEach((mod) => {
-						this.mrobj[mod] = e(mod);
-					});
-				},
-			]);
-		} else {
-			var _wai = this;
-			let modules = self.require("__debug").modulesMap;
-			Object.keys(modules)
-				.filter((e) => e.includes("WA"))
-				.forEach(function (mod) {
-					let modulos = modules[mod];
-					if (modulos) {
-						_wai.mrobj[mod] = {
-							default: modulos.defaultExport,
-							factory: modulos.factory,
-							...modulos,
-						};
-						if (Object.keys(_wai.mrobj[mod].default).length == 0) {
-							try {
-								self.ErrorGuard.skipGuardGlobal(true);
-								Object.assign(_wai.mrobj[mod], self.importNamespace(mod));
-							} catch (e) {}
-						}
-					}
-				});
-		}
-	}
-
-	findModule(query) {
-		let results = [];
-		let modules = Object.keys(this.mrobj);
-		modules.forEach((mKey) => {
-			let mod = this.mrobj[mKey];
-			if (typeof mod !== "undefined") {
-				if (typeof query === "string") {
-					if (typeof mod.default === "object") {
-						for (const key in mod.default) {
-							if (key == query) results.push(mod);
-						}
-					}
-					for (const key in mod) {
-						if (key == query) results.push(mod);
-					}
-				} else if (typeof query === "function") {
-					if (query(mod)) {
-						results.push(mod);
-					}
-				} else {
-					throw new TypeError(
-						"findModule can only find via string and function, " +
-							typeof query +
-							" was passed",
-					);
-				}
-			}
-		});
-		return results;
-	}
-
 	async openChat(tag) {
-		//console.log("openChat tag", tag);
+		// Try to find the chat element by notification tag (usually chat id or unique identifier)
+		if (!tag) return;
+		const chatSelector = `[data-id="${tag}"], [data-testid="cell-frame-container"][data-id="${tag}"]`;
+		const chatElement = document.querySelector(chatSelector);
 
-		let chatWid = this.findModule("createWid")[0].createWid(tag);
-		//console.log("openChat chatWid", chatWid);
-
-		let chat = await this.findModule(
-			(m) => m.default && m.default.Chat,
-		)[0].default.Chat.find(chatWid);
-		//console.log("openChat chat", chat);
-
-		/* To Debug on Browser
-		let chatWid = wa.findModule('createWid')[0].createWid(tag);
-		let chat    = await wa.findModule(m => m.default && m.default.Chat)[0].default.Chat.find(chatWid);
-		await wa.findModule("Cmd")[0].Cmd.openChatBottom(chat);
-		*/
-
-		//await this.findModule("Cmd")[0].Cmd.openChatBottom(chat);
-		await this.findModule("Cmd")[0].Cmd.openChatBottom({ chat: chat });
+		if (chatElement) {
+			chatElement.click();
+			console.log(`Opened chat for tag: ${tag}`);
+		} else {
+			console.warn(`Chat element not found for tag: ${tag}`);
+		}
 	}
 
 	countUnread() {
