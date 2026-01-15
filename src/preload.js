@@ -269,7 +269,8 @@ class NotificationServer {
 								2 * Math.PI,
 							);
 							ctx.lineWidth = borderWidth;
-							ctx.strokeStyle = "#7777";
+							const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+							ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 							ctx.stroke();
 
 							// Draw circular mask for icon
