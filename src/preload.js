@@ -252,48 +252,61 @@ class NotificationServer {
 					reader.onload = (event) => {
 						const img = new Image();
 						img.onload = () => {
-							const size = Math.max(img.width, img.height);
+							const scale = 2;
+							const size = scale * Math.max(img.width, img.height);
 							const canvas = document.createElement("canvas");
-							const ctx = canvas.getContext("2d");
 							canvas.width = size;
 							canvas.height = size;
-
+							const ctx = canvas.getContext("2d");
+							
+							// Enable high quality image smoothing
+							ctx.imageSmoothingEnabled = true;
+							ctx.imageSmoothingQuality = "high";
+							
 							// Draw 1px circular border, no background
-							const borderWidth = 1;
+							const borderWidth = scale * 2; // scale border width
 							ctx.beginPath();
 							ctx.arc(
-								size / 2,
-								size / 2,
-								size / 2 - borderWidth / 2,
-								0,
-								2 * Math.PI,
+							  size / 2,
+							  size / 2,
+							  size / 2 - borderWidth / 2,
+							  0,
+							  2 * Math.PI,
 							);
 							ctx.lineWidth = borderWidth;
 							const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 							ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 							ctx.stroke();
-
+							
 							// Draw circular mask for icon
 							ctx.save();
 							ctx.beginPath();
 							ctx.arc(
-								size / 2,
-								size / 2,
-								size / 2 - borderWidth,
-								0,
-								2 * Math.PI,
+							  size / 2,
+							  size / 2,
+							  size / 2 - borderWidth,
+							  0,
+							  2 * Math.PI,
 							);
 							ctx.closePath();
 							ctx.clip();
-
-							// Draw the image centered
-							const x = (size - img.width) / 2;
-							const y = (size - img.height) / 2;
-							ctx.drawImage(img, x, y, img.width, img.height);
-
+							
+							// Draw the image centered and scaled
+							const x = (size - scale * img.width) / 2;
+							const y = (size - scale * img.height) / 2;
+							ctx.drawImage(img, x, y, scale * img.width, scale * img.height);
+							
 							ctx.restore();
+							
+							// Downscale for output
+							const outputCanvas = document.createElement("canvas");
+							outputCanvas.width = size / scale;
+							outputCanvas.height = size / scale;
+							const outputCtx = outputCanvas.getContext("2d");
+							outputCtx.drawImage(canvas, 0, 0, outputCanvas.width, outputCanvas.height);
+							
+							resolve(outputCanvas.toDataURL("image/png"));
 
-							resolve(canvas.toDataURL("image/png"));
 						};
 						img.onerror = () => {
 							// fallback to original data URL if image fails to load
