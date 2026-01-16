@@ -492,7 +492,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				buttonContainer.id = "electron-window-controls";
 
 				buttonContainer.style.cssText =
-					"margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
+					"cursor: default; margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
 
 				const closeButton = document.createElement("div");
 				closeButton.className = buttonClasses;

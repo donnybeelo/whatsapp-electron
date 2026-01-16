@@ -24,9 +24,9 @@ jobs:
           echo "Current tag: $CUR_TAG"
           echo "Changelog:" > changelog.txt
           if [ -n "$PREV_TAG" ]; then
-            git log "$PREV_TAG..$CUR_TAG" --pretty=format:"- %s" >> changelog.txt
+            git log "$PREV_TAG..$CUR_TAG" --pretty=format:"- %s" | grep -v '^- Bump' >> changelog.txt
           else
-            git log "$CUR_TAG" --pretty=format:"- %s" >> changelog.txt
+            git log "$CUR_TAG" --pretty=format:"- %s" | grep -v '^- Bump' >> changelog.txt
           fi
           cat changelog.txt
 
