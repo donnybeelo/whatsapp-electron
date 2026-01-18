@@ -9,6 +9,7 @@ import {
 	shell,
 } from "electron";
 import Store from "electron-store";
+import dns from "node:dns"
 import path from "node:path";
 import { fileURLToPath } from "url";
 
@@ -307,11 +308,9 @@ class WhatsAppElectron {
 	async checkInternet() {
 		// Try to resolve a DNS or fetch a known URL
 		return new Promise((resolve) => {
-			import("node:dns").then((dns) => {
-				dns.resolve("whatsapp.com", (err) => {
-					if (err) resolve(false);
-					else resolve(true);
-				});
+			dns.resolve("whatsapp.com", (err) => {
+				if (err) resolve(false);
+				else resolve(true);
 			});
 		});
 	}
