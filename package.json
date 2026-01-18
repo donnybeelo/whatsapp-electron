@@ -2,11 +2,12 @@
 	"name": "whatsapp",
 	"productName": "WhatsApp",
 	"desktopName": "WhatsApp",
-	"version": "2.4.3",
+	"version": "2.4.4",
 	"description": "An unofficial WhatsApp desktop client built with Electron.",
 	"author": "Daniel Elia (donnybeelo)",
 	"license": "ISC",
 	"main": "./src/index.js",
+	"type": "module",
 	"scripts": {
 		"start": "electron ./src",
 		"clean": "rm -rf ./dist",
@@ -49,10 +50,10 @@
 		}
 	},
 	"dependencies": {
-		"electron-store": "^8.2.0"
+		"electron-store": "^11.0.2"
 	},
 	"devDependencies": {
-		"electron": "^39.2.1",
-		"electron-builder": "^26.0.12"
+		"electron": "^40.0.0",
+		"electron-builder": "^26.4.0"
 	}
 }

@@ -1,4 +1,4 @@
-const {
+import {
 	app,
 	BrowserWindow,
 	ipcMain,
@@ -6,9 +6,14 @@ const {
 	Tray,
 	nativeImage,
 	Notification,
-} = require("electron");
-const Store = require("electron-store");
-const path = require("node:path");
+	shell,
+} from "electron";
+import Store from "electron-store";
+import path from "node:path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.setAppUserModelId("whatsapp");
 
@@ -20,7 +25,7 @@ if (process.platform === "linux") {
 // Single Electron Instance
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
-	return;
+	process.exit(0);
 }
 
 // Parse command line arguments
@@ -238,7 +243,7 @@ class WhatsAppElectron {
 		this.window = new BrowserWindow(options);
 
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
-			require("electron").shell.openExternal(url);
+			shell.openExternal(url);
 			return { action: "deny" };
 		});
 		this.window.webContents.send(Constants.event.initResources, {
@@ -302,9 +307,11 @@ class WhatsAppElectron {
 	async checkInternet() {
 		// Try to resolve a DNS or fetch a known URL
 		return new Promise((resolve) => {
-			require("dns").resolve("whatsapp.com", (err) => {
-				if (err) resolve(false);
-				else resolve(true);
+			import("node:dns").then((dns) => {
+				dns.resolve("whatsapp.com", (err) => {
+					if (err) resolve(false);
+					else resolve(true);
+				});
 			});
 		});
 	}
@@ -348,11 +355,12 @@ class WhatsAppElectron {
 	}
 }
 
+import { init as initConstants } from "./constants.js";
 let Constants = {};
 const ws = new WhatsAppElectron();
 
 app.whenReady().then(() => {
-	Constants = require("./constants").init(app.getSystemLocale());
+	Constants = initConstants(app.getSystemLocale());
 	ws.init();
 });
 

@@ -1,4 +1,6 @@
-Constants = {
+import pkg from "../package.json" with { type: "json" };
+
+const Constants = {
 	appName: "WhatsApp",
 	offsets: {
 		window: { x: 0, y: 0, width: 0, height: 0 }, // Linux
@@ -8,7 +10,7 @@ Constants = {
 	whatsapp: {},
 };
 
-Constants.version = require("../package.json").version;
+Constants.version = pkg.version;
 
 Constants.whatsapp.url = "https://web.whatsapp.com/";
 Constants.whatsapp.userAgent =
@@ -60,4 +62,4 @@ const init = (lang) => {
 	return Constants;
 };
 
-module.exports = { init };
+export { init };
