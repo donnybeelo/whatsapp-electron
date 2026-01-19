@@ -277,6 +277,19 @@ class WhatsAppElectron {
 			}
 		});
 
+		this.window.on("show", () => {
+			if (
+				app.commandLine.getSwitchValue("ozone-platform") == "wayland" &&
+				!this.windowState.isMaximized
+			) {
+				this.window.maximize();
+				this.window.minimize();
+				setTimeout(() => {
+					this.window.unmaximize();
+				}, 100);
+			}
+		});
+
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
