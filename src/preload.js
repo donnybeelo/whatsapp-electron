@@ -258,55 +258,64 @@ class NotificationServer {
 							canvas.width = size;
 							canvas.height = size;
 							const ctx = canvas.getContext("2d");
-							
+
 							// Enable high quality image smoothing
 							ctx.imageSmoothingEnabled = true;
 							ctx.imageSmoothingQuality = "high";
-							
+
 							// Draw 1px circular border, no background
 							const borderWidth = scale * 2; // scale border width
 							ctx.beginPath();
 							ctx.arc(
-							  size / 2,
-							  size / 2,
-							  size / 2 - borderWidth / 2,
-							  0,
-							  2 * Math.PI,
+								size / 2,
+								size / 2,
+								size / 2 - borderWidth / 2,
+								0,
+								2 * Math.PI,
 							);
 							ctx.lineWidth = borderWidth;
-							const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-							ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+							const isDarkMode = window.matchMedia(
+								"(prefers-color-scheme: dark)",
+							).matches;
+							ctx.strokeStyle = isDarkMode
+								? "rgba(255, 255, 255, 0.1)"
+								: "rgba(0, 0, 0, 0.1)";
 							ctx.stroke();
-							
+
 							// Draw circular mask for icon
 							ctx.save();
 							ctx.beginPath();
 							ctx.arc(
-							  size / 2,
-							  size / 2,
-							  size / 2 - borderWidth,
-							  0,
-							  2 * Math.PI,
+								size / 2,
+								size / 2,
+								size / 2 - borderWidth,
+								0,
+								2 * Math.PI,
 							);
 							ctx.closePath();
 							ctx.clip();
-							
+
 							// Draw the image centered and scaled
 							const x = (size - scale * img.width) / 2;
 							const y = (size - scale * img.height) / 2;
 							ctx.drawImage(img, x, y, scale * img.width, scale * img.height);
-							
+
 							ctx.restore();
-							
+
 							// Downscale for output
 							const outputCanvas = document.createElement("canvas");
 							outputCanvas.width = size / scale;
 							outputCanvas.height = size / scale;
 							const outputCtx = outputCanvas.getContext("2d");
-							outputCtx.drawImage(canvas, 0, 0, outputCanvas.width, outputCanvas.height);
-							
-							resolve(outputCanvas.toDataURL("image/png"));
+							outputCtx.drawImage(
+								canvas,
+								0,
+								0,
+								outputCanvas.width,
+								outputCanvas.height,
+							);
 
+							resolve(outputCanvas.toDataURL("image/png"));
 						};
 						img.onerror = () => {
 							// fallback to original data URL if image fails to load
@@ -339,8 +348,8 @@ let Constants = {};
 let wa = null;
 const maximizeButtonSVG =
 	'<path fill="currentColor" d="M19 5v14H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>';
-const restoreButtonSVG = 
-	'<path fill="currentColor" d="M16.608 7.392v12.215H4.392V7.392h12.215m0-1.745H4.392c-.964 0-1.745.781-1.745 1.745v12.215c0 .463.184.907.511 1.234s.771.511 1.234.511h12.215c.463 0 .907-.184 1.234-.511s.511-.771.511-1.234V7.392c0-.463-.184-.907-.511-1.234s-.771-.511-1.234-.511zM5.647 4.392h13.961v13.961h.091c.913 0 1.654-.741 1.654-1.654V4.392c0-.964-.781-1.745-1.745-1.745h0H7.155a1.51 1.51 0 0 0-1.508 1.508z"/>'
+const restoreButtonSVG =
+	'<path fill="currentColor" d="M16.608 7.392v12.215H4.392V7.392h12.215m0-1.745H4.392c-.964 0-1.745.781-1.745 1.745v12.215c0 .463.184.907.511 1.234s.771.511 1.234.511h12.215c.463 0 .907-.184 1.234-.511s.511-.771.511-1.234V7.392c0-.463-.184-.907-.511-1.234s-.771-.511-1.234-.511zM5.647 4.392h13.961v13.961h.091c.913 0 1.654-.741 1.654-1.654V4.392c0-.964-.781-1.745-1.745-1.745h0H7.155a1.51 1.51 0 0 0-1.508 1.508z"/>';
 
 ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 	console.log(`BrowserView ID: ${data.id} / Name: ${data.name}`);
@@ -384,12 +393,12 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		// Generate CSS based on maximize state
 		const generateStyles = (maximized) => {
-			const borderRadius = !isWindows && !maximized ? "16px" : "0";
+			const borderRadius = !isWindows && !maximized ? 16 : 0;
 			const boxShadow =
 				!isWindows && !maximized ? "0 0 5px rgba(0, 0, 0, 0.5)" : "none";
 			const size = !isWindows && !maximized ? "calc(100% - 10px)" : "100%";
-			const margin = !isWindows && !maximized ? "5px" : "0";
-			const border = !isWindows && !maximized ? "1px" : "0";
+			const margin = !isWindows && !maximized ? 5 : 0;
+			const border = !isWindows && !maximized ? 1 : 0;
 
 			return `
 				/* Make all headers draggable */
@@ -400,11 +409,11 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				.overlay,
 				[data-animate-modal-backdrop="true"] {
-					width: calc(100% - 75px) !important;
-					left: 70px !important;
-					height: calc(100% - 10px) !important;
-					top: 5px !important;
-					border-radius: 0 ${borderRadius} ${borderRadius} 0 !important;
+					width: calc(100% - ${65 + 2 * margin}px) !important;
+					left: ${65 + margin}px !important;
+					height: calc(100% - ${2 * margin}px) !important;
+					top: ${margin}px !important;
+					border-radius: 0 ${borderRadius}px ${borderRadius}px 0 !important;
 				}
 
 				[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
@@ -422,16 +431,16 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				}
 
 				#app {
-					border-radius: ${borderRadius} !important;
+					border-radius: ${borderRadius}px !important;
 					overflow: hidden !important;
 					box-shadow: ${boxShadow} !important;
 					width: ${size} !important;
 					height: ${size} !important;
-					margin: ${margin} !important;
+					margin: ${margin}px !important;
 					box-sizing: border-box !important;
-					border: ${border} solid #aaaa;
+					border: ${border}px solid #aaaa;
 					@media (prefers-color-scheme: dark) {
-						border: ${border}	 solid #333a;
+						border: ${border}px solid #333a;
 					}
 				}
 			`;
@@ -459,9 +468,11 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 						node.style.borderRadius = maximized ? "0" : "16px";
 					}
 				});
-				document.querySelector(".maximize-button").querySelector("svg").innerHTML = maximized
+				document
+					.querySelector(".maximize-button")
+					.querySelector("svg").innerHTML = maximized
 					? restoreButtonSVG
-					: maximizeButtonSVG
+					: maximizeButtonSVG;
 			}
 		};
 
@@ -469,7 +480,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		ipcRenderer.on(
 			Constants.event.windowMaximizeStateChanged,
 			(_event, data) => {
-				isMaximized = data.isMaximized
+				isMaximized = data.isMaximized;
 				console.log("Maximize state changed:", data.isMaximized);
 				updateMaximizeStyles(data.isMaximized);
 			},
