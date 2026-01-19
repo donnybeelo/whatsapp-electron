@@ -2,10 +2,6 @@ import pkg from "../package.json" with { type: "json" };
 
 const Constants = {
 	appName: "WhatsApp",
-	offsets: {
-		window: { x: 0, y: 0, width: 0, height: 0 }, // Linux
-		view: { x: 0, y: 0, width: 0, height: 0 }, // Linux
-	},
 	event: {},
 	whatsapp: {},
 };
@@ -45,17 +41,6 @@ const init = (lang) => {
 			Constants.whatsapp.unreadText = "Não lidas";
 			Constants.whatsapp.unreadTextSearch =
 				/[0-9]+ mensage(m|ns)? não lida(s)?/;
-			break;
-	}
-
-	switch (process.platform) {
-		case "win32":
-			Constants.offsets.window.x = 0;
-			Constants.offsets.window.y = 0;
-			Constants.offsets.view.x = 0;
-			Constants.offsets.view.y = 0;
-			Constants.offsets.view.width = 0;
-			Constants.offsets.view.height = 0;
 			break;
 	}
 

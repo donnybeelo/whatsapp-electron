@@ -481,7 +481,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			Constants.event.windowMaximizeStateChanged,
 			(_event, data) => {
 				isMaximized = data.isMaximized;
-				console.log("Maximize state changed:", data.isMaximized);
 				updateMaximizeStyles(data.isMaximized);
 			},
 		);

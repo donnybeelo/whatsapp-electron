@@ -7,11 +7,12 @@ import {
 	nativeImage,
 	Notification,
 	shell,
+	screen,
 } from "electron";
-import Store from "electron-store";
-import dns from "node:dns"
+import dns from "node:dns";
 import path from "node:path";
 import { fileURLToPath } from "url";
+import windowStateKeeper from "electron-window-state";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +36,6 @@ const startInBackground =
 
 class WhatsAppElectron {
 	constructor() {
-		this.store = new Store();
 		this.baseIcon = !app.isPackaged
 			? path.join(__dirname, "../assets/whatsapp-icon-outline.png")
 			: path.join(
@@ -43,12 +43,6 @@ class WhatsAppElectron {
 					"app.asar.unpacked/assets/whatsapp-icon-outline.png",
 				);
 		this.isQuit = false;
-
-		this.bounds = this.store.get("bounds");
-		if (this.bounds == undefined) {
-			this.bounds = { width: 1024, height: 768, x: null, y: null };
-			this.store.set("bounds", this.bounds);
-		}
 
 		this.menuTemplate = [
 			{
@@ -212,13 +206,23 @@ class WhatsAppElectron {
 	}
 
 	createWindow() {
+		const primaryDisplay = screen.getPrimaryDisplay();
+		const { width: screenWidth, height: screenHeight } =
+			primaryDisplay.workArea;
+		const windowState = windowStateKeeper({
+			defaultWidth: Math.max(1200, Math.floor(screenWidth * 0.8)),
+			defaultHeight: Math.max(800, Math.floor(screenHeight * 0.8)),
+		});
+		this.windowState = windowState;
 		const isWindows = process.platform === "win32";
 		const preloadPath = app.isPackaged
 			? path.join(app.getAppPath(), "src", "preload.js")
 			: path.join(__dirname, "preload.js");
 		const options = {
-			width: this.bounds.width + Constants.offsets.window.width,
-			height: this.bounds.height + Constants.offsets.window.height,
+			width: windowState.width,
+			height: windowState.height,
+			x: windowState.x,
+			y: windowState.y,
 			minWidth: 750,
 			minHeight: 550,
 			icon: this.baseIcon,
@@ -236,12 +240,9 @@ class WhatsAppElectron {
 			},
 		};
 
-		if (this.bounds.x != null) {
-			options.x = this.bounds.x + Constants.offsets.window.x;
-			options.y = this.bounds.y + Constants.offsets.window.y;
-		}
-
 		this.window = new BrowserWindow(options);
+
+		windowState.manage(this.window);
 
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
 			shell.openExternal(url);
@@ -261,6 +262,19 @@ class WhatsAppElectron {
 			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
 				isMaximized: false,
 			});
+			if (process.platform === "linux") {
+				// Fallback to window state dimensions if unmaximize fails to restore size
+				// Wrapped in setTimeout to prevent infinite recursion (RangeError)
+				setTimeout(() => {
+					if (this.windowState) {
+						this.window.setSize(
+							this.windowState.width,
+							this.windowState.height,
+						);
+						this.window.setPosition(this.windowState.x, this.windowState.y);
+					}
+				}, 100);
+			}
 		});
 
 		// Send constants/init to renderer after load
@@ -286,13 +300,6 @@ class WhatsAppElectron {
 
 		if (!startInBackground) this.window.show();
 
-		this.window.on("move", () => {
-			this.storeWindowBounds();
-		});
-		this.window.on("resize", () => {
-			this.storeWindowBounds();
-		});
-
 		this.window.on("close", (e) => {
 			if (this.isQuit) {
 				app.quit();
@@ -315,11 +322,6 @@ class WhatsAppElectron {
 		});
 	}
 
-	storeWindowBounds() {
-		this.bounds = this.window.getBounds();
-		this.store.set("bounds", this.bounds);
-	}
-
 	updateTrayBadgeCounter(counter = 0) {
 		if (counter === 0) {
 			this.tray.setImage(this.baseIcon);
@@ -336,14 +338,13 @@ class WhatsAppElectron {
 
 	showHide(hide = true) {
 		if (!this.window.isFocused()) {
-			if (this.window.isVisible()) {
-				this.window.focus();
-			} else if (this.window.isMinimized()) {
+			if (this.window.isMinimized()) {
 				this.window.restore();
+				this.window.focus();
+			} else if (this.window.isVisible()) {
 				this.window.focus();
 			} else {
 				this.window.show();
-				this.window.restore();
 				this.window.focus();
 			}
 		} else {
