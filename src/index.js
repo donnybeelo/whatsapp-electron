@@ -280,13 +280,16 @@ class WhatsAppElectron {
 		this.window.on("show", () => {
 			if (
 				app.commandLine.getSwitchValue("ozone-platform") == "wayland" &&
-				!this.windowState.isMaximized
+				!this.windowState.isMaximized &&
+				this._hasShown
 			) {
 				this.window.maximize();
 				this.window.minimize();
 				setTimeout(() => {
 					this.window.unmaximize();
 				}, 100);
+			} else {
+				this._hasShown = true
 			}
 		});
 
