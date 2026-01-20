@@ -262,7 +262,7 @@ class WhatsAppElectron {
 			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
 				isMaximized: false,
 			});
-			if (process.platform === "linux") {
+			if (process.platform === "linux" && !this.isHyprland) {
 				// Fallback to window state dimensions if unmaximize fails to restore size
 				// Wrapped in setTimeout to prevent infinite recursion (RangeError)
 				setTimeout(() => {
