@@ -16,7 +16,7 @@
 		"dist": "electron-builder",
 		"dist:linux": "electron-builder --linux --x64",
 		"dist:windows": "electron-builder --windows --x64",
-		"release": "git tag -d v$npm_package_version && git push origin :v$npm_package_version && git tag -f v$npm_package_version && git push origin v$npm_package_version"
+		"release": "(git tag -d v$npm_package_version && git push origin :v$npm_package_version || true) && git tag -f v$npm_package_version && git push origin v$npm_package_version"
 	},
 	"build": {
 		"linux": {
