@@ -43,6 +43,9 @@ class WhatsAppElectron {
 					"app.asar.unpacked/assets/whatsapp-icon-outline.png",
 				);
 		this.isQuit = false;
+		this.isHyprland =
+			process.env.XDG_CURRENT_DESKTOP === "Hyprland" ||
+			!!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 
 		this.menuTemplate = [
 			{
@@ -296,9 +299,6 @@ class WhatsAppElectron {
 
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
-			this.isHyprland =
-				process.env.XDG_CURRENT_DESKTOP === "Hyprland" ||
-				!!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
 				id: "main",
 				name: "WhatsApp",
