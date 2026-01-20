@@ -1,5 +1,8 @@
 # WhatsApp Electron
-An Electron wrapper for WhatsApp Web<br>
+An Electron wrapper for WhatsApp Web
+
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/69929254-9899-4eb9-b3cb-961401c6a2f4" />
+
 Tested on Linux and Windows.
 
 Fork from https://github.com/dagmoller/whatsapp-electron.git
