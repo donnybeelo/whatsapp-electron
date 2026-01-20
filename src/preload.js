@@ -389,16 +389,20 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		window.wa = wa;
 
 		const isWindows = process.platform === "win32";
+		const isHyprland = data.isHyprland;
 		let isMaximized = false;
 
 		// Generate CSS based on maximize state
 		const generateStyles = (maximized) => {
-			const borderRadius = !isWindows && !maximized ? 16 : 0;
+			const borderRadius = !isWindows && !maximized && !isHyprland ? 16 : 0;
 			const boxShadow =
-				!isWindows && !maximized ? "0 0 5px rgba(0, 0, 0, 0.5)" : "none";
-			const size = !isWindows && !maximized ? "calc(100% - 10px)" : "100%";
-			const margin = !isWindows && !maximized ? 5 : 0;
-			const border = !isWindows && !maximized ? 1 : 0;
+				!isWindows && !maximized && !isHyprland
+					? "0 0 5px rgba(0, 0, 0, 0.5)"
+					: "none";
+			const size =
+				!isWindows && !maximized && !isHyprland ? "calc(100% - 10px)" : "100%";
+			const margin = !isWindows && !maximized && !isHyprland ? 5 : 0;
+			const border = !isWindows && !maximized && !isHyprland ? 1 : 0;
 
 			return `
 				/* Make all headers draggable */
@@ -462,7 +466,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			}
 
 			// Also update any dynamically added elements
-			if (!isWindows) {
+			if (!isWindows && !isHyprland) {
 				document.querySelectorAll("body > *").forEach((node) => {
 					if (node.nodeType === 1 && node.id !== "whatsapp-electron-style") {
 						node.style.borderRadius = maximized ? "0" : "16px";
@@ -487,6 +491,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		// Function to add window control buttons (can be called multiple times)
 		const addWindowControls = () => {
+			if (isHyprland) return;
+
 			const sidebarHeader = document.querySelector(
 				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
 			);
@@ -553,9 +559,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		};
 
 		// Periodically check if window controls need to be added
-		setInterval(() => {
-			addWindowControls();
-		}, 2000);
+		if (!isHyprland)
+			setInterval(() => {
+				addWindowControls();
+			}, 2000);
 
 		// Flag to prevent double initialization
 		let uiInitialized = false;
@@ -575,7 +582,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					mutation.addedNodes.forEach((node) => {
 						if (node.nodeType === 1 && node.parentElement === document.body) {
 							// Apply border-radius to top-level elements added to body
-							if (!isWindows && !isMaximized) {
+							if (!isWindows && !isMaximized && !isHyprland) {
 								node.style.borderRadius = "16px";
 								node.style.overflow = "hidden";
 							}

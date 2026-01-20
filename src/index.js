@@ -281,7 +281,8 @@ class WhatsAppElectron {
 			if (
 				app.commandLine.getSwitchValue("ozone-platform") == "wayland" &&
 				!this.windowState.isMaximized &&
-				this._hasShown
+				this._hasShown &&
+				!this.isHyprland
 			) {
 				this.window.maximize();
 				this.window.minimize();
@@ -289,16 +290,20 @@ class WhatsAppElectron {
 					this.window.unmaximize();
 				}, 100);
 			} else {
-				this._hasShown = true
+				this._hasShown = true;
 			}
 		});
 
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
+			this.isHyprland =
+				process.env.XDG_CURRENT_DESKTOP === "Hyprland" ||
+				!!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
 				id: "main",
 				name: "WhatsApp",
 				constants: Constants,
+				isHyprland: this.isHyprland,
 			});
 			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
 				isMaximized: this.window.isMaximized(),
