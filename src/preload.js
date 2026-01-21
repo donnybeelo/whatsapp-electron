@@ -510,6 +510,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				buttonContainer.style.cssText =
 					"cursor: default; margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
 
+				let lastClicked = "";
 				const closeButton = document.createElement("div");
 				closeButton.className = buttonClasses;
 				closeButton.style.cssText =
@@ -517,8 +518,23 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				const closeButtonSVG =
 					'<path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.89 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"></path>';
 				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
-				const actualButton = closeButton.querySelector("button");
-				actualButton.addEventListener("click", () => {
+				const actualCloseButton = closeButton.querySelector("button");
+				actualCloseButton.addEventListener("mousedown", () => {
+					closeButton.style.background = "#7777";
+					lastClicked = "close";
+				});
+				actualCloseButton.addEventListener("mouseup", () => {
+					closeButton.style.background = "";
+				});
+				actualCloseButton.addEventListener("mouseleave", () => {
+					closeButton.style.background = "";
+				});
+				actualCloseButton.addEventListener("mouseenter", (evnt) => {
+					if (evnt.buttons === 1 && lastClicked === "close") {
+						closeButton.style.background = "#7777";
+					}
+				});
+				actualCloseButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.closeWindow);
 				});
 				buttonContainer.appendChild(closeButton);
@@ -532,6 +548,21 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					isMaximized ? restoreButtonSVG : maximizeButtonSVG,
 				);
 				const actualMaximizeButton = maximizeButton.querySelector("button");
+				actualMaximizeButton.addEventListener("mousedown", () => {
+					maximizeButton.style.background = "#7777";
+					lastClicked = "maximize";
+				});
+				actualMaximizeButton.addEventListener("mouseup", () => {
+					maximizeButton.style.background = "";
+				});
+				actualMaximizeButton.addEventListener("mouseleave", () => {
+					maximizeButton.style.background = "";
+				});
+				actualMaximizeButton.addEventListener("mouseenter", (evnt) => {
+					if (evnt.buttons === 1 && lastClicked === "maximize") {
+						maximizeButton.style.background = "#7777";
+					}
+				});
 				actualMaximizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.maximizeWindow);
 				});
@@ -548,6 +579,21 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					minimizeButtonSVG,
 				);
 				const actualMinimizeButton = minimizeButton.querySelector("button");
+				actualMinimizeButton.addEventListener("mousedown", () => {
+					minimizeButton.style.background = "#7777";
+					lastClicked = "minimize";
+				});
+				actualMinimizeButton.addEventListener("mouseup", () => {
+					minimizeButton.style.background = "";
+				});
+				actualMinimizeButton.addEventListener("mouseleave", () => {
+					minimizeButton.style.background = "";
+				});
+				actualMinimizeButton.addEventListener("mouseenter", (evnt) => {
+					if (evnt.buttons === 1 && lastClicked === "minimize") {
+						minimizeButton.style.background = "#7777";
+					}
+				});
 				actualMinimizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.minimizeWindow);
 				});
