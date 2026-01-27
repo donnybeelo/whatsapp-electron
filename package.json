@@ -48,7 +48,15 @@
 				"**/assets/*.svg",
 				"**/assets/*.png"
 			]
-		}
+		},
+		"protocols": [
+			{
+				"name": "WhatsApp",
+				"schemes": [
+					"whatsapp"
+				]
+			}
+		]
 	},
 	"dependencies": {
 		"ajv": "^8.17.1",

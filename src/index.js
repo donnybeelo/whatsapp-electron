@@ -24,6 +24,16 @@ if (process.platform === "linux") {
 	app.setDesktopName("whatsapp.desktop");
 }
 
+if (process.defaultApp) {
+	if (process.argv.length >= 2) {
+		app.setAsDefaultProtocolClient("whatsapp", process.execPath, [
+			path.resolve(process.argv[1]),
+		]);
+	}
+} else {
+	app.setAsDefaultProtocolClient("whatsapp");
+}
+
 // Single Electron Instance
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
@@ -48,6 +58,7 @@ class WhatsAppElectron {
 			!!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 
 		this.notifications = new Map();
+		this.startUrl = null;
 
 		this.menuTemplate = [
 			{
@@ -81,6 +92,20 @@ class WhatsAppElectron {
 				],
 			},
 		];
+	}
+
+	handleProtocolUrl(argv) {
+		const urlArg = argv.find((arg) => arg.startsWith("whatsapp://"));
+		if (urlArg) {
+			const newUrl = urlArg.replace("whatsapp://", Constants.whatsapp.url);
+			if (this.window && this.window.webContents) {
+				this.window.loadURL(newUrl);
+				if (this.window.isMinimized()) this.window.restore();
+				this.window.focus();
+			} else {
+				this.startUrl = newUrl;
+			}
+		}
 	}
 
 	_initElectronApp() {
@@ -121,7 +146,7 @@ class WhatsAppElectron {
 
 	init() {
 		this._initElectronApp();
-
+		this.handleProtocolUrl(process.argv);
 		this.createWindow();
 
 		// set version on menu
@@ -333,7 +358,9 @@ class WhatsAppElectron {
 			if (!isOnline) {
 				this.window.loadFile(path.join(__dirname, "offline.html"));
 			} else {
-				this.window.loadURL(Constants.whatsapp.url);
+				const urlToLoad = this.startUrl || Constants.whatsapp.url;
+				this.window.loadURL(urlToLoad);
+				this.startUrl = null;
 			}
 		});
 
@@ -409,8 +436,9 @@ app.whenReady().then(() => {
 	ws.init();
 });
 
-app.on("second-instance", () => {
+app.on("second-instance", (event, argv) => {
 	ws.showHide(false);
+	ws.handleProtocolUrl(argv);
 });
 
 app.on("window-all-closed", () => {
