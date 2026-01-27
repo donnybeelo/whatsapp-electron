@@ -187,7 +187,8 @@ class WhatsAppElectron {
 			const n = new Notification({
 				title: data.title,
 				body: data.options.body,
-				icon: nativeImage.createFromDataURL(data.icon),
+				icon: data.icon ? nativeImage.createFromDataURL(data.icon) : undefined,
+				silent: data.options.silent,
 			});
 
 			if (data.options.tag) {
@@ -384,6 +385,12 @@ class WhatsAppElectron {
 			} else {
 				this.window.show();
 				this.window.focus();
+			}
+
+			// Close initial unread summary notification when window is shown
+			if (this.notifications.has("initial-unread")) {
+				this.notifications.get("initial-unread").close();
+				this.notifications.delete("initial-unread");
 			}
 		} else {
 			if (hide) {

@@ -6,6 +6,7 @@ class WhatsAppInstance {
 		this.id = id;
 		this.name = name;
 		this.lastUnread = 0;
+		this.initialNotificationsFired = false;
 
 		// Module Raid
 		this.mrid = null;
@@ -44,6 +45,15 @@ class WhatsAppInstance {
 				subtree: true,
 			});
 		}, 1000);
+
+		// Periodic check for moduleRaid
+		const moduleCheckInterval = setInterval(() => {
+			if (this.mrid != null && Object.keys(this.mrobj).length > 0) {
+				clearInterval(moduleCheckInterval);
+				return;
+			}
+			this.loadModuleRaid();
+		}, 3000);
 
 		// Events
 		ipcRenderer.on(Constants.event.fireNotificationClick, (event, tag) => {
@@ -89,14 +99,16 @@ class WhatsAppInstance {
 	}
 
 	loadModuleRaid() {
+		if (this.mrid != null && Object.keys(this.mrobj).length > 0) return;
+
 		console.log("Loading Module Raid...");
-		this.mrid = Math.random().toString(36).substring(7);
 
 		if (
 			window.Debug &&
 			window.Debug.VERSION &&
 			parseFloat(window.Debug.VERSION) < 2.3
 		) {
+			this.mrid = Math.random().toString(36).substring(7);
 			window.webpackChunkwhatsapp_web_client.push([
 				[this.mrid],
 				{},
@@ -107,26 +119,37 @@ class WhatsAppInstance {
 				},
 			]);
 		} else {
-			var _wai = this;
-			let modules = self.require("__debug").modulesMap;
-			Object.keys(modules)
-				.filter((e) => e.includes("WA"))
-				.forEach(function (mod) {
-					let modulos = modules[mod];
-					if (modulos) {
-						_wai.mrobj[mod] = {
-							default: modulos.defaultExport,
-							factory: modulos.factory,
-							...modulos,
-						};
-						if (Object.keys(_wai.mrobj[mod].default).length == 0) {
-							try {
-								self.ErrorGuard.skipGuardGlobal(true);
-								Object.assign(_wai.mrobj[mod], self.importNamespace(mod));
-							} catch (e) {}
+			try {
+				const debugModule = self.require("__debug");
+				if (!debugModule || !debugModule.modulesMap) return;
+
+				this.mrid = Math.random().toString(36).substring(7);
+				var _wai = this;
+				let modules = debugModule.modulesMap;
+				Object.keys(modules)
+					.filter((e) => e.includes("WA"))
+					.forEach(function (mod) {
+						let modulos = modules[mod];
+						if (modulos) {
+							_wai.mrobj[mod] = {
+								default: modulos.defaultExport,
+								factory: modulos.factory,
+								...modulos,
+							};
+							if (
+								_wai.mrobj[mod].default &&
+								Object.keys(_wai.mrobj[mod].default).length == 0
+							) {
+								try {
+									self.ErrorGuard.skipGuardGlobal(true);
+									Object.assign(_wai.mrobj[mod], self.importNamespace(mod));
+								} catch (e) {}
+							}
 						}
-					}
-				});
+					});
+			} catch (e) {
+				// Module not ready yet
+			}
 		}
 	}
 
@@ -182,6 +205,20 @@ class WhatsAppInstance {
 		await this.findModule("Cmd")[0].Cmd.openChatBottom({ chat: chat });
 	}
 
+	fireInitialUnreadNotifications(unreadChats) {
+		const totalUnread = unreadChats.reduce((acc, c) => acc + c.unreadCount, 0);
+		if (totalUnread === 0) return;
+
+		const title = "WhatsApp";
+		const body = `You have ${totalUnread} unread message${totalUnread > 1 ? "s" : ""} in ${unreadChats.length} chat${unreadChats.length > 1 ? "s" : ""}.`;
+
+		new NotificationServer(title, {
+			body: body,
+			tag: "initial-unread",
+			silent: true,
+		});
+	}
+
 	countUnread() {
 		let unread = 0;
 		let chats = 0;
@@ -224,6 +261,13 @@ class WhatsAppInstance {
 					unreadTags = chats
 						.filter((c) => c.unreadCount > 0)
 						.map((c) => c.id._serialized || c.id);
+
+					if (!this.initialNotificationsFired && unreadTags.length > 0) {
+						this.fireInitialUnreadNotifications(
+							chats.filter((c) => c.unreadCount > 0),
+						);
+						this.initialNotificationsFired = true;
+					}
 				}
 			} catch (e) {
 				// console.error("Error getting unread tags:", e);
@@ -251,9 +295,11 @@ class NotificationServer {
 	}
 
 	async _processOptions(title, options) {
-		options.icon = options.icon
-			.replace(Constants.whatsapp.url, "")
-			.replace("%3F", "?");
+		if (options.icon) {
+			options.icon = options.icon
+				.replace(Constants.whatsapp.url, "")
+				.replace("%3F", "?");
+		}
 		const serverNotification = JSON.parse(
 			JSON.stringify({
 				id: wa.getId(),
