@@ -47,6 +47,8 @@ class WhatsAppElectron {
 			process.env.XDG_CURRENT_DESKTOP === "Hyprland" ||
 			!!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 
+		this.notifications = new Map();
+
 		this.menuTemplate = [
 			{
 				label: "Help",
@@ -156,6 +158,16 @@ class WhatsAppElectron {
 		// Relay unread badge updates from renderer
 		ipcMain.on(Constants.event.updateUnreadMessages, (event, data) => {
 			this.updateTrayBadgeCounter(data.unread);
+
+			if (data.unreadTags) {
+				// Close notifications for tags that are no longer unread
+				for (const [tag, notification] of this.notifications.entries()) {
+					if (!data.unreadTags.includes(tag)) {
+						notification.close();
+						this.notifications.delete(tag);
+					}
+				}
+			}
 		});
 
 		// Relay badge icon update from renderer
@@ -166,11 +178,25 @@ class WhatsAppElectron {
 		// Relay notifications from renderer
 		ipcMain.on(Constants.event.newRendererNotification, (event, data) => {
 			//console.log("New Renderer Notification...", data);
+
+			// Close existing notification with the same tag
+			if (data.options.tag && this.notifications.has(data.options.tag)) {
+				this.notifications.get(data.options.tag).close();
+			}
+
 			const n = new Notification({
 				title: data.title,
 				body: data.options.body,
 				icon: nativeImage.createFromDataURL(data.icon),
 			});
+
+			if (data.options.tag) {
+				this.notifications.set(data.options.tag, n);
+				n.on("close", () => {
+					this.notifications.delete(data.options.tag);
+				});
+			}
+
 			n.on("click", (event) => {
 				// console.log("Notification Clicked...", data.id, data.options.tag);
 				this.showHide(false);
@@ -180,6 +206,14 @@ class WhatsAppElectron {
 				);
 			});
 			n.show();
+		});
+
+		// Relay notification close from renderer
+		ipcMain.on(Constants.event.closeRendererNotification, (event, tag) => {
+			if (this.notifications.has(tag)) {
+				this.notifications.get(tag).close();
+				this.notifications.delete(tag);
+			}
 		});
 
 		// Relay clear workers and reload from renderer

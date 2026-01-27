@@ -185,6 +185,7 @@ class WhatsAppInstance {
 	countUnread() {
 		let unread = 0;
 		let chats = 0;
+		let unreadTags = [];
 		const itens = document.getElementsByTagName("span");
 		for (const item of itens) {
 			if (item.hasAttributes()) {
@@ -198,9 +199,34 @@ class WhatsAppInstance {
 						if (!isNaN(count)) {
 							unread += count;
 							chats += 1;
+
+							// Try to find the tag (chat ID) from the parent elements
+							let parent = item.parentElement;
+							while (parent && parent !== document.body) {
+								if (parent.dataset && parent.dataset.testid === "cell-frame-container") {
+									// This is likely the chat item. We can't easily get the ID from here without moduleRaid
+									// But wait, if we have moduleRaid, we can use it.
+									break;
+								}
+								parent = parent.parentElement;
+							}
 						}
 					}
 				}
+			}
+		}
+
+		if (this.mrobj && Object.keys(this.mrobj).length > 0) {
+			try {
+				const ChatModule = this.findModule((m) => m.default && m.default.Chat)[0];
+				if (ChatModule) {
+					const chats = ChatModule.default.Chat.getModelsArray();
+					unreadTags = chats
+						.filter((c) => c.unreadCount > 0)
+						.map((c) => c.id._serialized || c.id);
+				}
+			} catch (e) {
+				// console.error("Error getting unread tags:", e);
 			}
 		}
 
@@ -211,6 +237,7 @@ class WhatsAppInstance {
 			ipcRenderer.send(Constants.event.updateUnreadMessages, {
 				id: this.id,
 				unread: unread - chats,
+				unreadTags: unreadTags,
 			});
 		}
 	}
@@ -219,6 +246,7 @@ class WhatsAppInstance {
 class NotificationServer {
 	constructor(title, options) {
 		//console.log("New NotificationServer...", title, options);
+		this.options = options;
 		this._processOptions(title, options);
 	}
 
@@ -340,7 +368,14 @@ class NotificationServer {
 		});
 	}
 
-	close() {}
+	close() {
+		if (this.options && this.options.tag) {
+			ipcRenderer.send(
+				Constants.event.closeRendererNotification,
+				this.options.tag,
+			);
+		}
+	}
 }
 
 // Events
