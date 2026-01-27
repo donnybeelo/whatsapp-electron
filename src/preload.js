@@ -507,11 +507,14 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 						node.style.borderRadius = maximized ? "0" : "16px";
 					}
 				});
-				document
-					.querySelector(".maximize-button")
-					.querySelector("svg").innerHTML = maximized
-					? restoreButtonSVG
-					: maximizeButtonSVG;
+
+				const maximizeButton = document.querySelector(".maximize-button");
+				if (maximizeButton) {
+					const svg = maximizeButton.querySelector("svg");
+					if (svg) {
+						svg.innerHTML = maximized ? restoreButtonSVG : maximizeButtonSVG;
+					}
+				}
 			}
 		};
 
