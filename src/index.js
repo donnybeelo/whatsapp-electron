@@ -9,7 +9,7 @@ import {
 	shell,
 	screen,
 } from "electron";
-import dns from "node:dns";
+import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "url";
 import windowStateKeeper from "electron-window-state";
@@ -379,11 +379,29 @@ class WhatsAppElectron {
 	}
 
 	async checkInternet() {
-		// Try to resolve a DNS or fetch a known URL
 		return new Promise((resolve) => {
-			dns.resolve("whatsapp.com", (err) => {
-				if (err) resolve(false);
-				else resolve(true);
+			const testUrl = "https://connectivitycheck.gstatic.com/generate_204";
+			const timeout = 5000;
+
+			const request = https.get(testUrl, { timeout }, (res) => {
+				if (res.statusCode === 204) {
+					resolve(true);
+				} else {
+					resolve(false);
+				}
+				request.destroy();
+			});
+
+			request.on("timeout", () => {
+				console.error("Internet check timed out.");
+				request.destroy();
+				resolve(false);
+			});
+
+			request.on("error", (err) => {
+				console.error("Internet check error:", err.message);
+				request.destroy();
+				resolve(false);
 			});
 		});
 	}
