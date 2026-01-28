@@ -262,7 +262,7 @@ class WhatsAppInstance {
 						.filter((c) => c.unreadCount > 0)
 						.map((c) => c.id._serialized || c.id);
 
-					if (!this.initialNotificationsFired && unreadTags.length > 0) {
+					if (!this.initialNotificationsFired && unreadTags.length > 0 && process.env.WHATSAPP_BACKGROUND === "1") {
 						this.fireInitialUnreadNotifications(
 							chats.filter((c) => c.unreadCount > 0),
 						);

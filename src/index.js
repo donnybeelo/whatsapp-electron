@@ -44,6 +44,10 @@ if (!app.requestSingleInstanceLock()) {
 const startInBackground =
 	process.argv.includes("--background") || process.argv.includes("-b");
 
+if (startInBackground) {
+	// Tell the preloader it's being loaded in the background
+	process.env.WHATSAPP_BACKGROUND = "1";
+}
 class WhatsAppElectron {
 	constructor() {
 		this.baseIcon = !app.isPackaged
