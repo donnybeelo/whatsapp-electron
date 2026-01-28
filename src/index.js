@@ -140,6 +140,7 @@ class WhatsAppElectron {
 					// If online and currently showing offline.html, restore WhatsApp
 					this.window.loadURL(Constants.whatsapp.url);
 					clearInterval(this._pollInterval);
+					return;
 				} else if (!isOnline && !isOffline) {
 					// If offline and currently showing WhatsApp, show offline.html
 					this.window.loadFile(path.join(__dirname, "offline.html"));
