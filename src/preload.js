@@ -1,5 +1,9 @@
 const { ipcRenderer } = require("electron");
 
+ipcRenderer.on("poll-refresh", () => {
+	window.dispatchEvent(new CustomEvent("poll-refresh"));
+});
+
 class WhatsAppInstance {
 	constructor(id, name) {
 		// self

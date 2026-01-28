@@ -58,9 +58,14 @@
     const secondsSpan = document.getElementById('seconds');
     setInterval(() => {
       seconds--;
-      if (seconds <= 0) seconds = 10;
+      if (seconds < 0) seconds = 0;
       secondsSpan.textContent = seconds;
     }, 1000);
+
+    window.addEventListener('poll-refresh', () => {
+      seconds = 10;
+      secondsSpan.textContent = seconds;
+    });
   </script>
   <style>
     @keyframes spin {

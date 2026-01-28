@@ -22,6 +22,7 @@ Constants.event.closeRendererNotification = "close-renderer-notification";
 Constants.event.fireNotificationClick = "fire-notification-click";
 Constants.event.buildBadgeIcon = "build-badge-icon";
 Constants.event.updateBadgeIcon = "set-updated-badge-icon";
+Constants.event.pollRefresh = "poll-refresh";
 
 Constants.event.getAccountsList = "get-accounts-list";
 Constants.event.addAccount = "add-account";

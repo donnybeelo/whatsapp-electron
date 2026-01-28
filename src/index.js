@@ -144,6 +144,8 @@ class WhatsAppElectron {
 				} else if (!isOnline && !isOffline) {
 					// If offline and currently showing WhatsApp, show offline.html
 					this.window.loadFile(path.join(__dirname, "offline.html"));
+				} else if (!isOnline && isOffline) {
+					this.window.webContents.send(Constants.event.pollRefresh);
 				}
 			});
 		}, 10000);
