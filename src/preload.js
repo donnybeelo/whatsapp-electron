@@ -244,7 +244,10 @@ class WhatsAppInstance {
 							// Try to find the tag (chat ID) from the parent elements
 							let parent = item.parentElement;
 							while (parent && parent !== document.body) {
-								if (parent.dataset && parent.dataset.testid === "cell-frame-container") {
+								if (
+									parent.dataset &&
+									parent.dataset.testid === "cell-frame-container"
+								) {
 									// This is likely the chat item. We can't easily get the ID from here without moduleRaid
 									// But wait, if we have moduleRaid, we can use it.
 									break;
@@ -259,14 +262,20 @@ class WhatsAppInstance {
 
 		if (this.mrobj && Object.keys(this.mrobj).length > 0) {
 			try {
-				const ChatModule = this.findModule((m) => m.default && m.default.Chat)[0];
+				const ChatModule = this.findModule(
+					(m) => m.default && m.default.Chat,
+				)[0];
 				if (ChatModule) {
 					const chats = ChatModule.default.Chat.getModelsArray();
 					unreadTags = chats
 						.filter((c) => c.unreadCount > 0)
 						.map((c) => c.id._serialized || c.id);
 
-					if (!this.initialNotificationsFired && unreadTags.length > 0 && process.env.WHATSAPP_BACKGROUND === "1") {
+					if (
+						!this.initialNotificationsFired &&
+						unreadTags.length > 0 &&
+						process.env.WHATSAPP_BACKGROUND === "1"
+					) {
 						this.fireInitialUnreadNotifications(
 							chats.filter((c) => c.unreadCount > 0),
 						);
@@ -498,10 +507,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				.overlay,
 				[data-animate-modal-backdrop="true"] {
-					width: calc(100% - ${65 + 2 * margin}px) !important;
-					left: ${65 + margin}px !important;
-					height: calc(100% - ${2 * margin}px) !important;
-					top: ${margin}px !important;
+					width: calc(100% - ${65 + 2 * (margin + border)}px) !important;
+					left: ${65 + margin + border}px !important;
+					height: calc(100% - ${2 * (margin + border)}px) !important;
+					top: ${margin + border}px !important;
 					border-radius: 0 ${borderRadius}px ${borderRadius}px 0 !important;
 				}
 
