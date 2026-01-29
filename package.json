@@ -31,6 +31,10 @@
 			"target": [
 				"AppImage"
 			],
+			"executableArgs": [
+				"--ozone-platform=x11",
+				"--no-sandbox"
+			],
 			"asarUnpack": [
 				"**/assets/*.svg",
 				"**/assets/*.png"
