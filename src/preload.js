@@ -487,14 +487,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		// Generate CSS based on maximize state
 		const generateStyles = (maximized) => {
-			const borderRadius = !isWindows && !maximized && !isHyprland ? 16 : 0;
-			const boxShadow =
-				!isWindows && !maximized && !isHyprland
-					? "0 0 5px rgba(0, 0, 0, 0.5)"
-					: "none";
-			const size =
-				!isWindows && !maximized && !isHyprland ? "calc(100% - 10px)" : "100%";
-			const margin = !isWindows && !maximized && !isHyprland ? 5 : 0;
 			const border = !isWindows && !maximized && !isHyprland ? 1 : 0;
 
 			return `
@@ -506,11 +498,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				.overlay,
 				[data-animate-modal-backdrop="true"] {
-					width: calc(100% - ${65 + 2 * (margin + border)}px) !important;
-					left: ${65 + margin + border}px !important;
-					height: calc(100% - ${2 * (margin + border)}px) !important;
-					top: ${margin + border}px !important;
-					border-radius: 0 ${borderRadius}px ${borderRadius}px 0 !important;
+					width: calc(100% - ${65 + 2 * border}px) !important;
+					left: ${65 + border}px !important;
+					height: calc(100% - ${2 * border}px) !important;
+					top: ${border}px !important;
 				}
 
 				[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
@@ -522,22 +513,11 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					-webkit-app-region: no-drag !important;
 				}
 
-				html, body {
-					overflow: hidden !important;
-					background: ${isWindows ? "#111b21" : "transparent"} !important;
-				}
-
 				#app {
-					border-radius: ${borderRadius}px !important;
-					overflow: hidden !important;
-					box-shadow: ${boxShadow} !important;
-					width: ${size} !important;
-					height: ${size} !important;
-					margin: ${margin}px !important;
 					box-sizing: border-box !important;
-					border: ${border}px solid #aaaa;
+					border: ${border}px solid #0005;
 					@media (prefers-color-scheme: dark) {
-						border: ${border}px solid #333a;
+						border: ${border}px solid #fff5;
 					}
 				}
 			`;
@@ -560,12 +540,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			// Also update any dynamically added elements
 			if (!isWindows && !isHyprland) {
-				document.querySelectorAll("body > *").forEach((node) => {
-					if (node.nodeType === 1 && node.id !== "whatsapp-electron-style") {
-						node.style.borderRadius = maximized ? "0" : "16px";
-					}
-				});
-
 				const maximizeButton = document.querySelector(".maximize-button");
 				if (maximizeButton) {
 					const svg = maximizeButton.querySelector("svg");

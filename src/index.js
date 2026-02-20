@@ -299,10 +299,9 @@ class WhatsAppElectron {
 			minWidth: 750,
 			minHeight: 550,
 			icon: this.baseIcon,
-			transparent: !isWindows,
-			hasShadow: true,
 			frame: false,
-			thickFrame: isWindows,
+			thickFrame: true,
+			autoHideMenuBar: true,
 			show: !startInBackground,
 			webPreferences: {
 				partition: "persist:default",
@@ -394,6 +393,11 @@ class WhatsAppElectron {
 						...options,
 						parent: this.window,
 						show: true,
+						frame: true,
+						width: 400,
+						height: 300,
+						minWidth: 300,
+						minHeight: 200,
 					},
 				};
 			}

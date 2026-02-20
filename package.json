@@ -10,7 +10,7 @@
 	"main": "./src/index.js",
 	"type": "module",
 	"scripts": {
-		"start": "electron ./src",
+		"start": "electron ./src --ozone-platform=x11",
 		"clean": "rm -rf ./dist",
 		"pack": "electron-builder --dir",
 		"dist": "electron-builder",
