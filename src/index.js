@@ -376,15 +376,26 @@ class WhatsAppElectron {
 		);
 
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
-			const whatsappBaseUrl = Constants.whatsapp.url.replace(/\/$/, "");
-			if (url.startsWith(whatsappBaseUrl)) {
-				const childWindow = new BrowserWindow({
-					...options,
-					parent: this.window,
-					show: true,
-				});
-				childWindow.loadURL(url);
-				return { action: "deny" };
+			const isWhatsAppDomain = (() => {
+				try {
+					const parsed = new URL(url);
+					return (
+						parsed.hostname === "web.whatsapp.com" ||
+						parsed.hostname.endsWith(".whatsapp.com")
+					);
+				} catch {
+					return false;
+				}
+			})();
+			if (isWhatsAppDomain) {
+				return {
+					action: "allow",
+					overrideBrowserWindowOptions: {
+						...options,
+						parent: this.window,
+						show: true,
+					},
+				};
 			}
 			shell.openExternal(url);
 			return { action: "deny" };
