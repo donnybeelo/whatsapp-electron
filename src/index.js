@@ -1,6 +1,7 @@
 import {
 	app,
 	BrowserWindow,
+	desktopCapturer,
 	ipcMain,
 	Menu,
 	Tray,
@@ -354,7 +355,37 @@ class WhatsAppElectron {
 			},
 		);
 
+		// Allow screen sharing via getDisplayMedia
+		this.window.webContents.session.setDisplayMediaRequestHandler(
+			async (request, callback) => {
+				try {
+					const sources = await desktopCapturer.getSources({
+						types: ["screen", "window"],
+					});
+					const source = sources[0];
+					if (source) {
+						callback({ video: source });
+					} else {
+						callback({});
+					}
+				} catch (error) {
+					console.error("Display media request error:", error);
+					callback({});
+				}
+			},
+		);
+
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
+			const whatsappBaseUrl = Constants.whatsapp.url.replace(/\/$/, "");
+			if (url.startsWith(whatsappBaseUrl)) {
+				const childWindow = new BrowserWindow({
+					...options,
+					parent: this.window,
+					show: true,
+				});
+				childWindow.loadURL(url);
+				return { action: "deny" };
+			}
 			shell.openExternal(url);
 			return { action: "deny" };
 		});
