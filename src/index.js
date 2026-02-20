@@ -122,6 +122,10 @@ class WhatsAppElectron {
 		// Check for internet and reload the correct page
 		this.checkInternet().then((isOnline) => {
 			if (isOnline) {
+				if (this._pollInterval) {
+					clearInterval(this._pollInterval);
+					this._pollInterval = null;
+				}
 				this.window.loadURL(Constants.whatsapp.url);
 			} else {
 				this.window.loadFile(path.join(__dirname, "offline.html"));
@@ -271,8 +275,6 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.closeWindow, () => {
 			this.window.close();
 		});
-
-		this.establishRefreshInterval();
 	}
 
 	createWindow() {
@@ -313,6 +315,44 @@ class WhatsAppElectron {
 		this.window = new BrowserWindow(options);
 
 		windowState.manage(this.window);
+
+		// Set up permission handler for camera and microphone
+		this.window.webContents.session.setPermissionRequestHandler(
+			(webContents, permission, callback) => {
+				const allowedPermissions = [
+					"media",
+					"mediaKeySystem",
+					"notifications",
+					"microphone",
+					"camera",
+					"fullscreen",
+					"display-capture",
+				];
+
+				if (allowedPermissions.includes(permission)) {
+					callback(true); // Automatically grant permission
+				} else {
+					callback(false);
+				}
+			},
+		);
+
+		// Set up permission check handler for ongoing permission checks
+		this.window.webContents.session.setPermissionCheckHandler(
+			(webContents, permission, requestingOrigin, details) => {
+				const allowedPermissions = [
+					"media",
+					"mediaKeySystem",
+					"notifications",
+					"microphone",
+					"camera",
+					"fullscreen",
+					"display-capture",
+				];
+
+				return allowedPermissions.includes(permission);
+			},
+		);
 
 		this.window.webContents.setWindowOpenHandler(({ url }) => {
 			shell.openExternal(url);
@@ -364,7 +404,12 @@ class WhatsAppElectron {
 		this.checkInternet().then((isOnline) => {
 			if (!isOnline) {
 				this.window.loadFile(path.join(__dirname, "offline.html"));
+				this.establishRefreshInterval();
 			} else {
+				if (this._pollInterval) {
+					clearInterval(this._pollInterval);
+					this._pollInterval = null;
+				}
 				const urlToLoad = this.startUrl || Constants.whatsapp.url;
 				this.window.loadURL(urlToLoad);
 				this.startUrl = null;

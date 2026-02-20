@@ -444,7 +444,6 @@ const maximizeButtonSVG =
 	'<path fill="currentColor" d="M19 5v14H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>';
 const restoreButtonSVG =
 	'<path fill="currentColor" d="M16.608 7.392v12.215H4.392V7.392h12.215m0-1.745H4.392c-.964 0-1.745.781-1.745 1.745v12.215c0 .463.184.907.511 1.234s.771.511 1.234.511h12.215c.463 0 .907-.184 1.234-.511s.511-.771.511-1.234V7.392c0-.463-.184-.907-.511-1.234s-.771-.511-1.234-.511zM5.647 4.392h13.961v13.961h.091c.913 0 1.654-.741 1.654-1.654V4.392c0-.964-.781-1.745-1.745-1.745h0H7.155a1.51 1.51 0 0 0-1.508 1.508z"/>';
-
 ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 	console.log(`BrowserView ID: ${data.id} / Name: ${data.name}`);
 	console.log("Received constants:", data.constants);
