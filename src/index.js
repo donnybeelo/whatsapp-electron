@@ -9,6 +9,7 @@ import {
 	Notification,
 	shell,
 	screen,
+	clipboard,
 } from "electron";
 import https from "node:https";
 import path from "node:path";
@@ -287,7 +288,6 @@ class WhatsAppElectron {
 			defaultHeight: Math.max(800, Math.floor(screenHeight * 0.8)),
 		});
 		this.windowState = windowState;
-		const isWindows = process.platform === "win32";
 		const preloadPath = app.isPackaged
 			? path.join(app.getAppPath(), "src", "preload.js")
 			: path.join(__dirname, "preload.js");
@@ -315,6 +315,52 @@ class WhatsAppElectron {
 		this.window = new BrowserWindow(options);
 
 		windowState.manage(this.window);
+
+		this.window.webContents.on("context-menu", (_event, params) => {
+			this.window.webContents.send(Constants.event.contextMenuInvoked, params);
+		});
+
+		ipcMain.on(Constants.event.openContextMenu, (_event, params) => {
+			const menu = Menu.buildFromTemplate([]);
+			const editFlags = params.editFlags || {};
+
+			if (params.mediaType === "image") {
+				menu.append(
+					new MenuItem({
+						label: "Copy Image",
+						click: () => {
+							this.window.webContents.copyImageAt(params.x, params.y);
+						},
+					}),
+				);
+			}
+			if (editFlags.canUndo) {
+				menu.append(new MenuItem({ role: "undo" }));
+			}
+			if (editFlags.canRedo) {
+				menu.append(new MenuItem({ role: "redo" }));
+			}
+			if (editFlags.canCut) {
+				menu.append(new MenuItem({ role: "cut" }));
+			}
+			if (editFlags.canCopy) {
+				menu.append(new MenuItem({ role: "copy" }));
+			}
+			if (editFlags.canPaste) {
+				menu.append(new MenuItem({ role: "paste" }));
+			}
+			if (editFlags.canDelete) {
+				menu.append(new MenuItem({ role: "delete" }));
+			}
+			if (editFlags.canSelectAll) {
+				menu.append(new MenuItem({ role: "selectall" }));
+			}
+			if (editFlags.canEditRichly) {
+				menu.append(new MenuItem({ role: "pasteAndMatchStyle" }));
+			}
+
+			menu.popup({ window: this.window });
+		});
 
 		// Set up permission handler for camera and microphone
 		this.window.webContents.session.setPermissionRequestHandler(
@@ -544,6 +590,7 @@ class WhatsAppElectron {
 }
 
 import { init as initConstants } from "./constants.js";
+import { MenuItem } from "electron/main";
 let Constants = {};
 const ws = new WhatsAppElectron();
 

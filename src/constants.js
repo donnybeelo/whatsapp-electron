@@ -24,6 +24,9 @@ Constants.event.buildBadgeIcon = "build-badge-icon";
 Constants.event.updateBadgeIcon = "set-updated-badge-icon";
 Constants.event.pollRefresh = "poll-refresh";
 
+Constants.event.contextMenuInvoked = "context-menu-invoked";
+Constants.event.openContextMenu = "open-context-menu";
+
 Constants.event.getAccountsList = "get-accounts-list";
 Constants.event.addAccount = "add-account";
 Constants.event.updateAccount = "update-account";
