@@ -517,7 +517,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					box-sizing: border-box !important;
 					border: ${border}px solid #0005;
 					@media (prefers-color-scheme: dark) {
-						border: ${border}px solid #fff5;
+						border: ${border}px solid #fff2;
 					}
 				}
 			`;
