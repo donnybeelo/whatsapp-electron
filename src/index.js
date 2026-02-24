@@ -323,11 +323,33 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.openContextMenu, (_event, params) => {
 			const menu = Menu.buildFromTemplate([]);
 			const editFlags = params.editFlags || {};
-
-			if (params.mediaType === "image") {
+			
+			
+			if (params.misspelledWord) {
+				for (const suggestion of params.dictionarySuggestions) {
+					menu.append(
+						new MenuItem({
+							label: suggestion,
+							click: () => {
+								this.window.webContents.replaceMisspelling(suggestion);
+							},
+						}),
+					);
+				}
 				menu.append(
 					new MenuItem({
-						label: "Copy Image",
+						label: "Add to Dictionary",
+						click: () => {
+							this.window.webContents.session.addWordToSpellCheckerDictionary(params.selectionText);
+						},
+					}),
+				);
+				menu.append(new MenuItem({ type: "separator" }));
+			}
+			if (params.mediaType === "image" || params.mediaType === "video") {
+				menu.append(
+					new MenuItem({
+						label: "Copy " + params.mediaType,
 						click: () => {
 							this.window.webContents.copyImageAt(params.x, params.y);
 						},
@@ -352,14 +374,13 @@ class WhatsAppElectron {
 			if (editFlags.canDelete) {
 				menu.append(new MenuItem({ role: "delete" }));
 			}
-			if (editFlags.canSelectAll) {
-				menu.append(new MenuItem({ role: "selectall" }));
-			}
 			if (editFlags.canEditRichly) {
 				menu.append(new MenuItem({ role: "pasteAndMatchStyle" }));
 			}
-
-			menu.popup({ window: this.window });
+			
+			if (menu.items.length > 0) {
+				menu.popup({ window: this.window });
+			}
 		});
 
 		// Set up permission handler for camera and microphone
