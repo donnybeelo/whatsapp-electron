@@ -261,22 +261,6 @@ class WhatsAppElectron {
 				this._forceReload();
 			});
 		});
-
-		ipcMain.on(Constants.event.minimizeWindow, () => {
-			this.window.minimize();
-		});
-
-		ipcMain.on(Constants.event.maximizeWindow, () => {
-			if (this.window.isMaximized()) {
-				this.window.unmaximize();
-			} else {
-				this.window.maximize();
-			}
-		});
-
-		ipcMain.on(Constants.event.closeWindow, () => {
-			this.window.close();
-		});
 	}
 
 	createWindow() {
@@ -302,6 +286,8 @@ class WhatsAppElectron {
 			frame: false,
 			thickFrame: true,
 			autoHideMenuBar: true,
+			titleBarStyle: 'hidden',
+			...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
 			show: !startInBackground,
 			webPreferences: {
 				partition: "persist:default",
@@ -323,8 +309,7 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.openContextMenu, (_event, params) => {
 			const menu = Menu.buildFromTemplate([]);
 			const editFlags = params.editFlags || {};
-			
-			
+
 			if (params.misspelledWord) {
 				for (const suggestion of params.dictionarySuggestions) {
 					menu.append(
@@ -340,7 +325,9 @@ class WhatsAppElectron {
 					new MenuItem({
 						label: "Add to Dictionary",
 						click: () => {
-							this.window.webContents.session.addWordToSpellCheckerDictionary(params.selectionText);
+							this.window.webContents.session.addWordToSpellCheckerDictionary(
+								params.selectionText,
+							);
 						},
 					}),
 				);
@@ -377,7 +364,7 @@ class WhatsAppElectron {
 			if (editFlags.canEditRichly) {
 				menu.append(new MenuItem({ role: "pasteAndMatchStyle" }));
 			}
-			
+
 			if (menu.items.length > 0) {
 				menu.popup({ window: this.window });
 			}
@@ -475,31 +462,6 @@ class WhatsAppElectron {
 			constants: Constants,
 		});
 
-		// Relay maximize/minimize/close events to renderer for CSS
-		this.window.on("maximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: true,
-			});
-		});
-		this.window.on("unmaximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: false,
-			});
-			if (process.platform === "linux" && !this.isHyprland) {
-				// Fallback to window state dimensions if unmaximize fails to restore size
-				// Wrapped in setTimeout to prevent infinite recursion (RangeError)
-				setTimeout(() => {
-					if (this.windowState) {
-						this.window.setSize(
-							this.windowState.width,
-							this.windowState.height,
-						);
-						this.window.setPosition(this.windowState.x, this.windowState.y);
-					}
-				}, 100);
-			}
-		});
-
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
@@ -507,9 +469,6 @@ class WhatsAppElectron {
 				name: "WhatsApp",
 				constants: Constants,
 				isHyprland: this.isHyprland,
-			});
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: this.window.isMaximized(),
 			});
 		});
 

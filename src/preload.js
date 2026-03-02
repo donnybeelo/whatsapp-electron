@@ -82,7 +82,9 @@ class WhatsAppInstance {
 				return false;
 			})();
 			if (isMessage) {
-				const chevronIcon = node.querySelector('span[data-icon="ic-chevron-down-menu"]');
+				const chevronIcon = node.querySelector(
+					'span[data-icon="ic-chevron-down-menu"]',
+				);
 				const button = chevronIcon.parentElement;
 				button.click();
 			} else {
@@ -465,10 +467,7 @@ class NotificationServer {
 // Events
 let Constants = {};
 let wa = null;
-const maximizeButtonSVG =
-	'<path fill="currentColor" d="M19 5v14H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>';
-const restoreButtonSVG =
-	'<path fill="currentColor" d="M16.608 7.392v12.215H4.392V7.392h12.215m0-1.745H4.392c-.964 0-1.745.781-1.745 1.745v12.215c0 .463.184.907.511 1.234s.771.511 1.234.511h12.215c.463 0 .907-.184 1.234-.511s.511-.771.511-1.234V7.392c0-.463-.184-.907-.511-1.234s-.771-.511-1.234-.511zM5.647 4.392h13.961v13.961h.091c.913 0 1.654-.741 1.654-1.654V4.392c0-.964-.781-1.745-1.745-1.745h0H7.155a1.51 1.51 0 0 0-1.508 1.508z"/>';
+
 ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 	console.log(`BrowserView ID: ${data.id} / Name: ${data.name}`);
 	console.log("Received constants:", data.constants);
@@ -508,202 +507,35 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		const isWindows = process.platform === "win32";
 		const isHyprland = data.isHyprland;
-		let isMaximized = false;
-
-		// Generate CSS based on maximize state
-		const generateStyles = (maximized) => {
-			const border = !isWindows && !maximized && !isHyprland ? 1 : 0;
+		// Generate CSS styles
+		const generateStyles = () => {
+			const border = !isWindows && !isHyprland ? 1 : 0;
 
 			return `
-				/* Make all headers draggable */
-				header[tabindex="0"] {
-					-webkit-app-region: drag !important;
-					z-index: 600 !important;
+				body {
+					-webkit-app-region: drag;
+					background-color: var(--WDS-surface-emphasized) !important;
 				}
-
-				.overlay,
-				[data-animate-modal-backdrop="true"] {
-					width: calc(100% - ${65 + 2 * border}px) !important;
-					left: ${65 + border}px !important;
-					height: calc(100% - ${2 * border}px) !important;
-					top: ${border}px !important;
-				}
-
-				[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
-					width: calc(100% - 65px) !important;
-					margin-left: 65px;
-				}
-
-				header button, [role="button"] {
+				
+				body * {
 					-webkit-app-region: no-drag !important;
 				}
-
-				#app {
-					box-sizing: border-box !important;
-					border: ${border}px solid #0005;
-					@media (prefers-color-scheme: dark) {
-						border: ${border}px solid #fff2;
-					}
+			
+				#app,
+				.overlay,
+				[data-animate-modal-backdrop="true"] {
+					height: calc(100% - 30px);
+					margin-top: 30px;
 				}
 			`;
 		};
 
 		const style = document.createElement("style");
 		style.id = "whatsapp-electron-style";
-		style.textContent = generateStyles(false);
+		style.textContent = generateStyles();
 		document.head.appendChild(style);
 
 		window.ipcRenderer = require("electron").ipcRenderer;
-
-		// Function to update styles based on maximize state
-		const updateMaximizeStyles = (maximized) => {
-			isMaximized = maximized;
-			const styleEl = document.getElementById("whatsapp-electron-style");
-			if (styleEl) {
-				styleEl.textContent = generateStyles(maximized);
-			}
-
-			// Also update any dynamically added elements
-			if (!isWindows && !isHyprland) {
-				const maximizeButton = document.querySelector(".maximize-button");
-				if (maximizeButton) {
-					const svg = maximizeButton.querySelector("svg");
-					if (svg) {
-						svg.innerHTML = maximized ? restoreButtonSVG : maximizeButtonSVG;
-					}
-				}
-			}
-		};
-
-		// Listen for maximize state changes
-		ipcRenderer.on(
-			Constants.event.windowMaximizeStateChanged,
-			(_event, data) => {
-				isMaximized = data.isMaximized;
-				updateMaximizeStyles(data.isMaximized);
-			},
-		);
-
-		// Function to add window control buttons (can be called multiple times)
-		const addWindowControls = () => {
-			if (isHyprland) return;
-
-			const sidebarHeader = document.querySelector(
-				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
-			);
-
-			// Check if buttons already exist
-			if (
-				sidebarHeader &&
-				!document.getElementById("electron-window-controls")
-			) {
-				const buttonClasses =
-					"x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 x1q0g3np x1cy8zhl x100vrsf x1vqgdyp xhslqc4 x1ekkm8c x1143rjc xum4auv xj21bgg x1277o0a x13i9f1t xr9ek0c xjpr12u";
-				const buttonContainer = document.createElement("div");
-				buttonContainer.id = "electron-window-controls";
-
-				buttonContainer.style.cssText =
-					"cursor: default; margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
-
-				let lastClicked = "";
-				const closeButton = document.createElement("div");
-				closeButton.className = buttonClasses;
-				closeButton.style.cssText =
-					"backdrop-filter: brightness(0) saturate(100%) invert(10%) sepia(100%) saturate(7476%) hue-rotate(3deg) brightness(101%) contrast(109%) opacity(0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
-				const closeButtonSVG =
-					'<path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.89 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"></path>';
-				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
-				const actualCloseButton = closeButton.querySelector("button");
-				actualCloseButton.addEventListener("mousedown", () => {
-					closeButton.style.background = "#7777";
-					lastClicked = "close";
-				});
-				actualCloseButton.addEventListener("mouseup", () => {
-					closeButton.style.background = "";
-				});
-				actualCloseButton.addEventListener("mouseleave", () => {
-					closeButton.style.background = "";
-				});
-				actualCloseButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "close") {
-						closeButton.style.background = "#7777";
-					}
-				});
-				actualCloseButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.closeWindow);
-				});
-				buttonContainer.appendChild(closeButton);
-
-				const maximizeButton = document.createElement("div");
-				maximizeButton.className = buttonClasses + " maximize-button";
-				maximizeButton.style.cssText =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
-				maximizeButton.innerHTML = generateButtonHTML(
-					"Maximize",
-					isMaximized ? restoreButtonSVG : maximizeButtonSVG,
-				);
-				const actualMaximizeButton = maximizeButton.querySelector("button");
-				actualMaximizeButton.addEventListener("mousedown", () => {
-					maximizeButton.style.background = "#7777";
-					lastClicked = "maximize";
-				});
-				actualMaximizeButton.addEventListener("mouseup", () => {
-					maximizeButton.style.background = "";
-				});
-				actualMaximizeButton.addEventListener("mouseleave", () => {
-					maximizeButton.style.background = "";
-				});
-				actualMaximizeButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "maximize") {
-						maximizeButton.style.background = "#7777";
-					}
-				});
-				actualMaximizeButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.maximizeWindow);
-				});
-				buttonContainer.appendChild(maximizeButton);
-
-				const minimizeButton = document.createElement("div");
-				minimizeButton.className = buttonClasses;
-				minimizeButton.style.cssText =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
-				const minimizeButtonSVG =
-					'<path fill="currentColor" d="M19 13H5v-2h14v2z"></path>';
-				minimizeButton.innerHTML = generateButtonHTML(
-					"Minimize",
-					minimizeButtonSVG,
-				);
-				const actualMinimizeButton = minimizeButton.querySelector("button");
-				actualMinimizeButton.addEventListener("mousedown", () => {
-					minimizeButton.style.background = "#7777";
-					lastClicked = "minimize";
-				});
-				actualMinimizeButton.addEventListener("mouseup", () => {
-					minimizeButton.style.background = "";
-				});
-				actualMinimizeButton.addEventListener("mouseleave", () => {
-					minimizeButton.style.background = "";
-				});
-				actualMinimizeButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "minimize") {
-						minimizeButton.style.background = "#7777";
-					}
-				});
-				actualMinimizeButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.minimizeWindow);
-				});
-				buttonContainer.appendChild(minimizeButton);
-
-				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
-				console.log("Window control buttons added");
-			}
-		};
-
-		// Periodically check if window controls need to be added
-		if (!isHyprland)
-			setInterval(() => {
-				addWindowControls();
-			}, 2000);
 
 		// Flag to prevent double initialization
 		let uiInitialized = false;
@@ -723,7 +555,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					mutation.addedNodes.forEach((node) => {
 						if (node.nodeType === 1 && node.parentElement === document.body) {
 							// Apply border-radius to top-level elements added to body
-							if (!isWindows && !isMaximized && !isHyprland) {
+							if (!isWindows && !isHyprland) {
 								node.style.borderRadius = "16px";
 								node.style.overflow = "hidden";
 							}
@@ -736,9 +568,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				childList: true,
 				subtree: false,
 			});
-
-			// Add window control buttons initially
-			addWindowControls();
 		};
 
 		// Wait for WhatsApp to load by detecting when the sidebar header appears
@@ -783,14 +612,3 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		setTimeout(waitForWhatsApp, 500);
 	}
 });
-
-function generateButtonHTML(name, svg) {
-	return `<span class="html-span xdj266r x14z9mp xat24cr x1lziwak xexx8yu xyri2b x18d9i69 x1c1uobl x1hl2dhg x16tdsg8 x1vvkbs x4k7w5x x1h91t0o x1h9r5lt x1jfb8zj xv2umb2 x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1qrby5j">
-<button aria-label="${name}" tabindex="-1" data-navbar-item="true" class="xjb2p0i xk390pu x1heor9g x1ypdohk xjbqb8w x972fbf x10w94by x1qhh985 x14e42zd xtnn1bt x9v5kkp xmw7ebm xrdum7p xt8t1vi x1xc408v x129tdwq x15urzxu xh8yej3 x1y1aw1k xf159sx xwib8y2 xmzvs34" style="display: flex; align-items: center; justify-content: center;">
-<svg viewBox="0 0 24 24" height="24" width="24" preserveAspectRatio="xMidYMid meet" style="display: block;" fill="none">
-<title>${name}</title>
-${svg}
-</svg>
-</button>
-</span>`;
-}
