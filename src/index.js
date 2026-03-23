@@ -323,8 +323,7 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.openContextMenu, (_event, params) => {
 			const menu = Menu.buildFromTemplate([]);
 			const editFlags = params.editFlags || {};
-			
-			
+
 			if (params.misspelledWord) {
 				for (const suggestion of params.dictionarySuggestions) {
 					menu.append(
@@ -340,7 +339,9 @@ class WhatsAppElectron {
 					new MenuItem({
 						label: "Add to Dictionary",
 						click: () => {
-							this.window.webContents.session.addWordToSpellCheckerDictionary(params.selectionText);
+							this.window.webContents.session.addWordToSpellCheckerDictionary(
+								params.selectionText,
+							);
 						},
 					}),
 				);
@@ -377,7 +378,7 @@ class WhatsAppElectron {
 			if (editFlags.canEditRichly) {
 				menu.append(new MenuItem({ role: "pasteAndMatchStyle" }));
 			}
-			
+
 			if (menu.items.length > 0) {
 				menu.popup({ window: this.window });
 			}
@@ -500,6 +501,18 @@ class WhatsAppElectron {
 			}
 		});
 
+		// Relay focus state to renderer for window controls styling
+		this.window.on("focus", () => {
+			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
+				isFocused: true,
+			});
+		});
+		this.window.on("blur", () => {
+			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
+				isFocused: false,
+			});
+		});
+
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
@@ -510,6 +523,9 @@ class WhatsAppElectron {
 			});
 			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
 				isMaximized: this.window.isMaximized(),
+			});
+			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
+				isFocused: this.window.isFocused(),
 			});
 		});
 

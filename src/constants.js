@@ -38,6 +38,7 @@ Constants.event.minimizeWindow = "minimize-window";
 Constants.event.maximizeWindow = "maximize-window";
 Constants.event.closeWindow = "close-window";
 Constants.event.windowMaximizeStateChanged = "window-maximize-state-changed";
+Constants.event.windowFocusStateChanged = "window-focus-state-changed";
 
 const init = (lang) => {
 	// Default English

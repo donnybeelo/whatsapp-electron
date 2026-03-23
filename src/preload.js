@@ -4,6 +4,24 @@ ipcRenderer.on("poll-refresh", () => {
 	window.dispatchEvent(new CustomEvent("poll-refresh"));
 });
 
+let windowIsFocused = true;
+
+const applyWindowControlsFocusFilter = () => {
+	const controls = document.getElementById("electron-window-controls");
+	if (!controls) return;
+
+	const filter = windowIsFocused ? "" : "opacity(0.5)";
+	controls.querySelectorAll(":scope svg").forEach((button) => {
+		button.style.filter = filter;
+	});
+	const closeButton = controls.firstElementChild;
+	if (closeButton) {
+		closeButton.style.backdropFilter = windowIsFocused
+			? "brightness(0) saturate(100%) invert(10%) sepia(100%) saturate(7476%) hue-rotate(3deg) brightness(101%) contrast(109%) opacity(0.4)"
+			: "";
+	}
+};
+
 class WhatsAppInstance {
 	constructor(id, name) {
 		// self
@@ -82,7 +100,9 @@ class WhatsAppInstance {
 				return false;
 			})();
 			if (isMessage) {
-				const chevronIcon = node.querySelector('span[data-icon="ic-chevron-down-menu"]');
+				const chevronIcon = node.querySelector(
+					'span[data-icon="ic-chevron-down-menu"]',
+				);
 				const button = chevronIcon.parentElement;
 				button.click();
 			} else {
@@ -584,6 +604,12 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			},
 		);
 
+		// Listen for focus state changes from main process
+		ipcRenderer.on(Constants.event.windowFocusStateChanged, (_event, data) => {
+			windowIsFocused = !!data?.isFocused;
+			applyWindowControlsFocusFilter();
+		});
+
 		// Function to add window control buttons (can be called multiple times)
 		const addWindowControls = () => {
 			if (isHyprland) return;
@@ -599,6 +625,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			) {
 				const buttonClasses =
 					"x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 x1q0g3np x1cy8zhl x100vrsf x1vqgdyp xhslqc4 x1ekkm8c x1143rjc xum4auv xj21bgg x1277o0a x13i9f1t xr9ek0c xjpr12u";
+				const buttonStyle =
+					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
 				const buttonContainer = document.createElement("div");
 				buttonContainer.id = "electron-window-controls";
 
@@ -608,10 +636,9 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				let lastClicked = "";
 				const closeButton = document.createElement("div");
 				closeButton.className = buttonClasses;
-				closeButton.style.cssText =
-					"backdrop-filter: brightness(0) saturate(100%) invert(10%) sepia(100%) saturate(7476%) hue-rotate(3deg) brightness(101%) contrast(109%) opacity(0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
+				closeButton.style.cssText = buttonStyle;
 				const closeButtonSVG =
-					'<path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.89 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"></path>';
+					'<path fill="currentColor" d="M19.7 4.3a1 1 0 0 0-1.4 0L12 10.6 5.7 4.3a1 1 0 1 0-1.4 1.4l6.3 6.3-6.3 6.3a1 1 0 1 0 1.4 1.4l6.3-6.3 6.3 6.3a1 1 0 0 0 1.4-1.4l-6.3-6.3 6.3-6.3a1 1 0 0 0 0-1.4z"></path>';
 				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
 				const actualCloseButton = closeButton.querySelector("button");
 				actualCloseButton.addEventListener("mousedown", () => {
@@ -636,8 +663,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				const maximizeButton = document.createElement("div");
 				maximizeButton.className = buttonClasses + " maximize-button";
-				maximizeButton.style.cssText =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
+				maximizeButton.style.cssText = buttonStyle;
 				maximizeButton.innerHTML = generateButtonHTML(
 					"Maximize",
 					isMaximized ? restoreButtonSVG : maximizeButtonSVG,
@@ -665,8 +691,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 				const minimizeButton = document.createElement("div");
 				minimizeButton.className = buttonClasses;
-				minimizeButton.style.cssText =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
+				minimizeButton.style.cssText = buttonStyle;
 				const minimizeButtonSVG =
 					'<path fill="currentColor" d="M19 13H5v-2h14v2z"></path>';
 				minimizeButton.innerHTML = generateButtonHTML(
@@ -697,6 +722,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
 				console.log("Window control buttons added");
 			}
+
+			applyWindowControlsFocusFilter();
 		};
 
 		// Periodically check if window controls need to be added
