@@ -2,7 +2,7 @@
 	"name": "whatsapp",
 	"productName": "WhatsApp",
 	"desktopName": "WhatsApp",
-	"version": "2.9.1",
+	"version": "2.9.2",
 	"description": "An unofficial WhatsApp desktop client built with Electron.",
 	"author": "Daniel Elia <d.elia@outlook.com> (https://donnybeelo.github.io)",
 	"email": "d.elia@outlook.com",
@@ -67,7 +67,7 @@
 		"electron-window-state": "^5.0.3"
 	},
 	"devDependencies": {
-		"electron": "^40.8.3",
+		"electron": "^40.9.2",
 		"electron-builder": "^26.8.1"
 	}
 }
