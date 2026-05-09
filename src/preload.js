@@ -495,9 +495,17 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 	Constants = data.constants;
 	console.log("Constants set:", Constants);
 
-	// Check if whatsapp is calling google update
-	const titleEl = document.querySelector(".landing-title");
-	const isUpdate = titleEl && titleEl.innerHTML.includes("Google Chrome");
+	// Check if WhatsApp is showing the browser-outdated screen.
+	// The exact DOM varies between builds, so inspect the visible page text
+	// instead of relying on a single class name.
+	const pageText = [
+		document.title,
+		document.body?.innerText || "",
+		document.querySelector(".landing-title")?.textContent || "",
+	]
+		.filter(Boolean)
+		.join(" ");
+	const isUpdate = /Google Chrome/i.test(pageText);
 
 	if (isUpdate) {
 		console.warn("Page requested chrome update...");
