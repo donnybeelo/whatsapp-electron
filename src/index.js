@@ -115,6 +115,8 @@ class WhatsAppElectron {
 	}
 
 	_initElectronApp() {
+		app.userAgentFallback = Constants.whatsapp.userAgent;
+
 		if (process.platform == "win32") app.setAppUserModelId(Constants.appName);
 	}
 
