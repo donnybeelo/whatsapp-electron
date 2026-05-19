@@ -317,10 +317,6 @@ class WhatsAppElectron {
 		windowState.manage(this.window);
 
 		this.window.webContents.on("context-menu", (_event, params) => {
-			this.window.webContents.send(Constants.event.contextMenuInvoked, params);
-		});
-
-		ipcMain.on(Constants.event.openContextMenu, (_event, params) => {
 			const menu = Menu.buildFromTemplate([]);
 			const editFlags = params.editFlags || {};
 

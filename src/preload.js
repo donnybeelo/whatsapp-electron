@@ -83,33 +83,6 @@ class WhatsAppInstance {
 			this.openChat(tag);
 		});
 
-		ipcRenderer.on(Constants.event.contextMenuInvoked, (_event, params) => {
-			const el = document.elementFromPoint(params.x, params.y);
-			let node = el;
-			const isMessage = (() => {
-				while (node) {
-					if (
-						node.classList &&
-						(node.classList.contains("message-out") ||
-							node.classList.contains("message-in"))
-					) {
-						return true;
-					}
-					node = node.parentElement;
-				}
-				return false;
-			})();
-			if (isMessage) {
-				const chevronIcon = node.querySelector(
-					'span[data-icon="ic-chevron-down-menu"]',
-				);
-				const button = chevronIcon.parentElement;
-				button.click();
-			} else {
-				ipcRenderer.send(Constants.event.openContextMenu, params);
-			}
-		});
-
 		ipcRenderer.on(Constants.event.buildBadgeIcon, (event, data) => {
 			console.log("Building badge icon...", data);
 			const img = new Image();
