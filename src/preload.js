@@ -530,13 +530,35 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					top: ${border}px !important;
 				}
 
-				[class="xsm26vf x10l6tqk x1ey2m1c xoxg7ud x9f619 x78zum5 xdt5ytf x6s0dn4 x1nhvcw1 xh8yej3 xpyat2d x6ikm8r x10wlt62 x13fuv20 x178xt8z xx42vgk xg01cxk xqu7myx"] {
-					width: calc(100% - 65px) !important;
-					margin-left: 65px;
-				}
-
 				header button, [role="button"] {
 					-webkit-app-region: no-drag !important;
+				}
+
+				.electron-window-controls-button,
+				.electron-window-controls-button svg {
+					transition: transform 50ms ease-in-out;
+				}
+
+				.electron-window-controls-button:hover {
+					background: var(--WDS-components-active-list-row);
+					transform: scale(1.1);
+				}
+
+				.electron-window-controls-button:hover svg {
+					transform: scale(0.91);
+				}
+
+				#electron-window-controls {
+					cursor: default;
+					margin-bottom: 8px;
+					margin-top: 4px;
+					gap: 6px;
+					display:flex;
+					flex-direction:column;
+					-webkit-app-region: no-drag;
+					align-items: center;
+					justify-content: center;
+					width: 40px;
 				}
 
 				#app {
@@ -595,28 +617,24 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		const addWindowControls = () => {
 			if (isHyprland) return;
 
-			const sidebarHeader = document.querySelector(
-				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
-			);
+			const chatElement = document.querySelector('[aria-label="Chats"]');
+			const sidebarHeader =
+				chatElement?.parentElement?.parentElement?.parentElement?.parentElement;
 
 			// Check if buttons already exist
 			if (
 				sidebarHeader &&
 				!document.getElementById("electron-window-controls")
 			) {
-				const buttonClasses =
-					"x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 x1q0g3np x1cy8zhl x100vrsf x1vqgdyp xhslqc4 x1ekkm8c x1143rjc xum4auv xj21bgg x1277o0a x13i9f1t xr9ek0c xjpr12u";
+				const buttonClass = "electron-window-controls-button";
 				const buttonStyle =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;";
+					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;";
 				const buttonContainer = document.createElement("div");
 				buttonContainer.id = "electron-window-controls";
 
-				buttonContainer.style.cssText =
-					"cursor: default; margin-bottom: 5px; gap: 2px; display:flex; flex-direction:column; -webkit-app-region: no-drag; align-items: center; justify-content: center; width: 40px";
-
 				let lastClicked = "";
 				const closeButton = document.createElement("div");
-				closeButton.className = buttonClasses;
+				closeButton.className = buttonClass;
 				closeButton.style.cssText = buttonStyle;
 				const closeButtonSVG =
 					'<path fill="currentColor" d="M19.7 4.3a1 1 0 0 0-1.4 0L12 10.6 5.7 4.3a1 1 0 1 0-1.4 1.4l6.3 6.3-6.3 6.3a1 1 0 1 0 1.4 1.4l6.3-6.3 6.3 6.3a1 1 0 0 0 1.4-1.4l-6.3-6.3 6.3-6.3a1 1 0 0 0 0-1.4z"></path>';
@@ -643,7 +661,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				buttonContainer.appendChild(closeButton);
 
 				const maximizeButton = document.createElement("div");
-				maximizeButton.className = buttonClasses + " maximize-button";
+				maximizeButton.className = buttonClass + " maximize-button";
 				maximizeButton.style.cssText = buttonStyle;
 				maximizeButton.innerHTML = generateButtonHTML(
 					"Maximize",
@@ -671,7 +689,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				buttonContainer.appendChild(maximizeButton);
 
 				const minimizeButton = document.createElement("div");
-				minimizeButton.className = buttonClasses;
+				minimizeButton.className = buttonClass;
 				minimizeButton.style.cssText = buttonStyle;
 				const minimizeButtonSVG =
 					'<path fill="currentColor" d="M19 13H5v-2h14v2z"></path>';
@@ -751,9 +769,9 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		// Wait for WhatsApp to load by detecting when the sidebar header appears
 		const waitForWhatsApp = () => {
-			const sidebarHeader = document.querySelector(
-				'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
-			);
+			const chatElement = document.querySelector('[aria-label="Chats"]');
+			const sidebarHeader =
+				chatElement?.parentElement?.parentElement?.parentElement?.parentElement;
 
 			if (sidebarHeader) {
 				console.log("WhatsApp sidebar detected!");
@@ -762,9 +780,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				// WhatsApp not loaded yet, use MutationObserver
 				console.log("Waiting for WhatsApp to load...");
 				const observer = new MutationObserver((mutations, obs) => {
-					const sidebar = document.querySelector(
-						'[class="x1c4vz4f xs83m0k xdl72j9 x1g77sc7 x78zum5 xozqiw3 x1oa3qoh x12fk4p8 xeuugli x2lwn1j x1nhvcw1 xdt5ytf x1cy8zhl x1277o0a"]',
-					);
+					const chatElement = document.querySelector('[aria-label="Chats"]');
+					const sidebar =
+						chatElement?.parentElement?.parentElement?.parentElement
+							?.parentElement;
 
 					if (sidebar) {
 						console.log("WhatsApp loaded via MutationObserver!");
@@ -793,9 +812,9 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 });
 
 function generateButtonHTML(name, svg) {
-	return `<span class="html-span xdj266r x14z9mp xat24cr x1lziwak xexx8yu xyri2b x18d9i69 x1c1uobl x1hl2dhg x16tdsg8 x1vvkbs x4k7w5x x1h91t0o x1h9r5lt x1jfb8zj xv2umb2 x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1qrby5j">
-<button aria-label="${name}" tabindex="-1" data-navbar-item="true" class="xjb2p0i xk390pu x1heor9g x1ypdohk xjbqb8w x972fbf x10w94by x1qhh985 x14e42zd xtnn1bt x9v5kkp xmw7ebm xrdum7p xt8t1vi x1xc408v x129tdwq x15urzxu xh8yej3 x1y1aw1k xf159sx xwib8y2 xmzvs34" style="display: flex; align-items: center; justify-content: center;">
-<svg viewBox="0 0 24 24" height="24" width="24" preserveAspectRatio="xMidYMid meet" style="display: block;" fill="none">
+	return `<span class="html-span" style="width: 100%; height: 100%">
+<button aria-label="${name}" tabindex="-1" data-navbar-item="true" style="display: flex; align-items: center; justify-content: center; color: var(--WDS-content-deemphasized); width: 100%; height: 100%;">
+<svg viewBox="0 0 24 24" height="16" width="16" preserveAspectRatio="xMidYMid meet" style="display: block;" fill="none">
 <title>${name}</title>
 ${svg}
 </svg>
