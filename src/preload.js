@@ -534,19 +534,23 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					-webkit-app-region: no-drag !important;
 				}
 
-				.electron-window-controls-button,
-				.electron-window-controls-button svg {
+				.electron-window-controls-button::before {
+					content: "";
+					transform: scale(0.8);
+					border-radius: 50%;
+					background: transparent;
+					position: absolute;
+					width: 32px;
+					height: 32px;
+					z-index: -1;
 					transition: transform 50ms ease-in-out;
 				}
 
-				.electron-window-controls-button:hover {
+				.electron-window-controls-button:hover::before {
 					background: var(--WDS-components-active-list-row);
-					transform: scale(1.1);
+					transform: scale(1);
 				}
 
-				.electron-window-controls-button:hover svg {
-					transform: scale(0.91);
-				}
 
 				#electron-window-controls {
 					cursor: default;
