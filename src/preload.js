@@ -534,23 +534,14 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					-webkit-app-region: no-drag !important;
 				}
 
-				.electron-window-controls-button::before {
-					content: "";
-					transform: scale(0.8);
-					border-radius: 50%;
-					background: transparent;
-					position: absolute;
-					width: 32px;
-					height: 32px;
-					z-index: -1;
-					transition: transform 50ms ease-in-out;
+				.electron-window-controls-button {
+					transition: background 100ms, scale 100ms, opacity 150ms;
 				}
 
-				.electron-window-controls-button:hover::before {
+				.electron-window-controls-button:active {
+					scale: 0.9;
 					background: var(--WDS-components-active-list-row);
-					transform: scale(1);
 				}
-
 
 				#electron-window-controls {
 					cursor: default;
@@ -645,7 +636,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
 				const actualCloseButton = closeButton.querySelector("button");
 				actualCloseButton.addEventListener("mousedown", () => {
-					closeButton.style.background = "#7777";
 					lastClicked = "close";
 				});
 				actualCloseButton.addEventListener("mouseup", () => {
@@ -654,10 +644,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				actualCloseButton.addEventListener("mouseleave", () => {
 					closeButton.style.background = "";
 				});
-				actualCloseButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "close") {
-						closeButton.style.background = "#7777";
-					}
+				actualCloseButton.addEventListener("mouseenter", () => {
+					closeButton.style.background = "var(--WDS-components-active-list-row)";
 				});
 				actualCloseButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.closeWindow);
@@ -673,7 +661,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				);
 				const actualMaximizeButton = maximizeButton.querySelector("button");
 				actualMaximizeButton.addEventListener("mousedown", () => {
-					maximizeButton.style.background = "#7777";
 					lastClicked = "maximize";
 				});
 				actualMaximizeButton.addEventListener("mouseup", () => {
@@ -682,10 +669,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				actualMaximizeButton.addEventListener("mouseleave", () => {
 					maximizeButton.style.background = "";
 				});
-				actualMaximizeButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "maximize") {
-						maximizeButton.style.background = "#7777";
-					}
+				actualMaximizeButton.addEventListener("mouseenter", () => {
+					maximizeButton.style.background = "var(--WDS-components-active-list-row)";
 				});
 				actualMaximizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.maximizeWindow);
@@ -703,7 +688,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				);
 				const actualMinimizeButton = minimizeButton.querySelector("button");
 				actualMinimizeButton.addEventListener("mousedown", () => {
-					minimizeButton.style.background = "#7777";
 					lastClicked = "minimize";
 				});
 				actualMinimizeButton.addEventListener("mouseup", () => {
@@ -712,10 +696,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				actualMinimizeButton.addEventListener("mouseleave", () => {
 					minimizeButton.style.background = "";
 				});
-				actualMinimizeButton.addEventListener("mouseenter", (evnt) => {
-					if (evnt.buttons === 1 && lastClicked === "minimize") {
-						minimizeButton.style.background = "#7777";
-					}
+				actualMinimizeButton.addEventListener("mouseenter", () => {
+					minimizeButton.style.background = "var(--WDS-components-active-list-row)";
 				});
 				actualMinimizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.minimizeWindow);
