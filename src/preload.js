@@ -22,6 +22,13 @@ const applyWindowControlsFocusFilter = () => {
 	}
 };
 
+// Clear hover backgrounds for window controls (used in multiple places)
+const clearWindowControlsHover = () => {
+	document.querySelectorAll(".electron-window-controls-button").forEach((el) => {
+		try { el.style.background = ""; } catch (e) {}
+	});
+};
+
 class WhatsAppInstance {
 	constructor(id, name) {
 		// self
@@ -606,6 +613,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		ipcRenderer.on(Constants.event.windowFocusStateChanged, (_event, data) => {
 			windowIsFocused = !!data?.isFocused;
 			applyWindowControlsFocusFilter();
+			// If window regained focus (restored/unminimized), clear any lingering hover styles
+			if (windowIsFocused) {
+				try { clearWindowControlsHover(); } catch (e) {}
+			}
 		});
 
 		// Function to add window control buttons (can be called multiple times)
@@ -688,6 +699,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				);
 				const actualMinimizeButton = minimizeButton.querySelector("button");
 				actualMinimizeButton.addEventListener("mousedown", () => {
+					minimizeButton.style.background = "";
 					lastClicked = "minimize";
 				});
 				actualMinimizeButton.addEventListener("mouseup", () => {
@@ -707,6 +719,20 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
 				console.log("Window control buttons added");
 			}
+
+			// Clear hover backgrounds for window controls (fix persistent hover after minimize)
+			const clearWindowControlsHover = () => {
+				document.querySelectorAll(".electron-window-controls-button").forEach((el) => {
+					try { el.style.background = ""; } catch (e) {}
+				});
+			};
+
+			// When the document becomes visible again (unminimized/restored), clear any hover styles
+			document.addEventListener("visibilitychange", () => {
+				if (document.visibilityState === "visible") {
+					clearWindowControlsHover();
+				}
+			});
 
 			applyWindowControlsFocusFilter();
 		};
