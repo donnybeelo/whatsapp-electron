@@ -530,11 +530,17 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				}
 
 				.overlay,
-				[data-animate-modal-backdrop="true"] {
+				[data-animate-modal-backdrop="true"],
+				[data-testid="media-viewer-modal"] {
 					width: calc(100% - ${65 + 2 * border}px) !important;
 					left: ${65 + border}px !important;
 					height: calc(100% - ${2 * border}px) !important;
 					top: ${border}px !important;
+				}
+
+				[aria-label="Media list"] {
+					height: calc(100% - ${20 + border}px);
+					overflow-y: hidden;
 				}
 
 				header button, [role="button"] {
