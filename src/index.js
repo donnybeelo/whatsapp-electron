@@ -90,6 +90,7 @@ class WhatsAppElectron {
 					{ type: "separator" },
 					{
 						label: "Quit",
+						accelerator: "CmdOrCtrl+Q",
 						click: () => {
 							this.isQuit = true;
 							app.quit();
