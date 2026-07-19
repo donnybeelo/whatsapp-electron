@@ -2,7 +2,7 @@
 	"name": "whatsapp",
 	"productName": "WhatsApp",
 	"desktopName": "WhatsApp",
-	"version": "2.9.7",
+	"version": "2.9.8",
 	"description": "An unofficial WhatsApp desktop client built with Electron.",
 	"author": "Daniel Elia <d.elia@outlook.com> (https://donnybeelo.github.io)",
 	"email": "d.elia@outlook.com",
