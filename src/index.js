@@ -629,7 +629,14 @@ const ws = new WhatsAppElectron();
 
 app.whenReady().then(() => {
 	Constants = initConstants(app.getSystemLocale());
-	ws.init();
+	// ponytail: on GNOME the StatusNotifierWatcher can still be registering at
+	// login/autostart; creating the Tray before it's up renders a broken icon
+	// with a dead menu. Delay init() slightly, bump if it still happens.
+	if (process.platform === "linux") {
+		setTimeout(() => ws.init(), 1500);
+	} else {
+		ws.init();
+	}
 });
 
 app.on("second-instance", (event, argv) => {
