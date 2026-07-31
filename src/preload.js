@@ -235,18 +235,46 @@ class WhatsAppInstance {
 		setTimeout(() => this.clickChatRow(chat.formattedTitle), 100);
 	}
 
-	fireInitialUnreadNotifications(unreadChats) {
-		const totalUnread = unreadChats.reduce((acc, c) => acc + c.unreadCount, 0);
-		if (totalUnread === 0) return;
+	clickChatRow(title) {
+		const row = [...document.querySelectorAll('#pane-side [role="row"]')].find(
+			(r) => r.querySelector("span[title]")?.title === title,
+		);
+		const target =
+			row?.querySelector('[data-testid="cell-frame-container"]') || row;
+		if (!target) return;
 
-		const title = "WhatsApp";
-		const body = `You have ${totalUnread} unread message${totalUnread > 1 ? "s" : ""} in ${unreadChats.length} chat${unreadChats.length > 1 ? "s" : ""}.`;
+		for (const type of ["pointerdown", "mousedown", "mouseup", "click"]) {
+			target.dispatchEvent(
+				new MouseEvent(type, { bubbles: true, cancelable: true, view: window }),
+			);
+		}
+	}
 
-		new NotificationServer(title, {
-			body: body,
-			tag: "initial-unread",
-			silent: true,
-		});
+	async fireInitialUnreadNotifications(unreadChats) {
+		const { ProfilePicThumbCollection } = self.require(
+			"WAWebProfilePicThumbCollection",
+		);
+
+		for (const chat of unreadChats) {
+			const n = chat.unreadCount;
+			const lastBody = n === 1 ? chat.msgs?.last?.()?.body : null;
+
+			let icon;
+			try {
+				const pic = await ProfilePicThumbCollection.find(chat.id);
+				// NotificationServer circles the icon and draws the border
+				icon = pic?.imgFull || pic?.img;
+			} catch (e) {
+				// no picture set, or not synced yet
+			}
+
+			new NotificationServer(chat.formattedTitle || "WhatsApp", {
+				body: lastBody || `${n} unread message${n > 1 ? "s" : ""}`,
+				icon: icon,
+				tag: chat.id._serialized || chat.id,
+				silent: true,
+			});
+		}
 	}
 
 	countUnread() {
@@ -297,11 +325,7 @@ class WhatsAppInstance {
 						.filter((c) => c.unreadCount > 0)
 						.map((c) => c.id._serialized || c.id);
 
-					if (
-						!this.initialNotificationsFired &&
-						unreadTags.length > 0 &&
-						process.env.WHATSAPP_BACKGROUND === "1"
-					) {
+					if (!this.initialNotificationsFired && unreadTags.length > 0) {
 						this.fireInitialUnreadNotifications(
 							chats.filter((c) => c.unreadCount > 0),
 						);
