@@ -456,9 +456,12 @@ class WhatsAppElectron {
 					action: "allow",
 					overrideBrowserWindowOptions: {
 						...options,
-						parent: this.window,
+						// no parent: a call window has to outlive the main window being
+						// hidden, and a transient child can't be maximised on Wayland
 						show: true,
 						frame: true,
+						maximizable: true,
+						fullscreenable: true,
 						width: 400,
 						height: 300,
 						minWidth: 300,
@@ -468,6 +471,20 @@ class WhatsAppElectron {
 			}
 			shell.openExternal(url);
 			return { action: "deny" };
+		});
+
+		// F11 / double-click titlebar to fullscreen a call window, Escape to leave
+		this.window.webContents.on("did-create-window", (child) => {
+			child.webContents.on("before-input-event", (event, input) => {
+				if (input.type !== "keyDown") return;
+				if (input.key === "F11") {
+					child.setFullScreen(!child.isFullScreen());
+					event.preventDefault();
+				} else if (input.key === "Escape" && child.isFullScreen()) {
+					child.setFullScreen(false);
+					event.preventDefault();
+				}
+			});
 		});
 		this.window.webContents.send(Constants.event.initResources, {
 			constants: Constants,
