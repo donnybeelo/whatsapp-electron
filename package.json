@@ -10,7 +10,7 @@
 	"main": "./src/index.js",
 	"type": "module",
 	"scripts": {
-		"start": "electron ./src --ozone-platform=x11",
+		"start": "electron ./src",
 		"clean": "rm -rf ./dist",
 		"pack": "electron-builder --dir",
 		"dist": "electron-builder",
@@ -32,7 +32,6 @@
 				"AppImage"
 			],
 			"executableArgs": [
-				"--ozone-platform=x11",
 				"--no-sandbox"
 			],
 			"asarUnpack": [
@@ -67,7 +66,7 @@
 		"electron-window-state": "^5.0.3"
 	},
 	"devDependencies": {
-		"electron": "^40.9.3",
-		"electron-builder": "^26.8.1"
+		"electron": "^43.2.0",
+		"electron-builder": "^26.15.3"
 	}
 }
