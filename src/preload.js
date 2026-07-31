@@ -545,7 +545,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 		// Generate CSS based on maximize state
 		const generateStyles = (maximized) => {
-			const border = !isWindows && !maximized && !isHyprland ? 1 : 0;
+			const border = 0;
 
 			return `
 				/* Make all headers draggable */
@@ -557,14 +557,12 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 				.overlay,
 				[data-animate-modal-backdrop="true"],
 				[data-testid="media-viewer-modal"] {
-					width: calc(100% - ${65 + 2 * border}px) !important;
-					left: ${65 + border}px !important;
-					height: calc(100% - ${2 * border}px) !important;
-					top: ${border}px !important;
+					width: calc(100% - 65px) !important;
+					left: 65px !important;
 				}
 
 				[aria-label="Media list"] {
-					height: calc(100% - ${20 + border}px);
+					height: calc(100% - 20px);
 					overflow-y: hidden;
 				}
 
@@ -592,14 +590,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					align-items: center;
 					justify-content: center;
 					width: 40px;
-				}
-
-				#app {
-					box-sizing: border-box !important;
-					border: ${border}px solid #0005;
-					@media (prefers-color-scheme: dark) {
-						border: ${border}px solid #fff2;
-					}
 				}
 			`;
 		};
