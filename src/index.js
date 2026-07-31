@@ -626,6 +626,14 @@ class WhatsAppElectron {
 import { init as initConstants } from "./constants.js";
 import { MenuItem } from "electron/main";
 let Constants = {};
+// webSecurity:false stops Chromium honouring COOP/COEP (Electron 41+), which drops
+// SharedArrayBuffer; WhatsApp gates calling on it. Re-enable SAB without isolation.
+// Must run before app is ready, or the renderer never sees the feature.
+app.commandLine.appendSwitch(
+	"enable-features",
+	"SharedArrayBuffer,SharedArrayBufferOnDesktop",
+);
+
 const ws = new WhatsAppElectron();
 
 app.whenReady().then(() => {
