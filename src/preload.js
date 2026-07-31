@@ -216,22 +216,23 @@ class WhatsAppInstance {
 	async openChat(tag) {
 		//console.log("openChat tag", tag);
 
-		let chatWid = this.findModule("createWid")[0].createWid(tag);
-		//console.log("openChat chatWid", chatWid);
+		// ponytail: named requires instead of scanning 12k modules for a "Cmd" key --
+		// the scan can land on a stale duplicate that swallows the trigger silently
+		const { createWid } = self.require("WAWebWidFactory");
+		const { ChatCollection } = self.require("WAWebChatCollection");
+		const { Cmd } = self.require("WAWebCmd");
 
-		let chat = await this.findModule(
-			(m) => m.default && m.default.Chat,
-		)[0].default.Chat.find(chatWid);
-		//console.log("openChat chat", chat);
+		const chat = await ChatCollection.find(createWid(tag));
+		if (chat.unreadCount > 0) {
+			await Cmd.openChatFromUnread({ chat });
+		} else {
+			await Cmd.openChatBottom({ chat });
+		}
 
-		/* To Debug on Browser
-		let chatWid = wa.findModule('createWid')[0].createWid(tag);
-		let chat    = await wa.findModule(m => m.default && m.default.Chat)[0].default.Chat.find(chatWid);
-		await wa.findModule("Cmd")[0].Cmd.openChatBottom(chat);
-		*/
-
-		//await this.findModule("Cmd")[0].Cmd.openChatBottom(chat);
-		await this.findModule("Cmd")[0].Cmd.openChatBottom({ chat: chat });
+		// ponytail: the Cmd only focuses the row in current WhatsApp builds, so click it.
+		// Matches on the visible title; the chat list is virtualised, so this only works
+		// for rows currently rendered -- fine for notifications, which are recent chats.
+		setTimeout(() => this.clickChatRow(chat.formattedTitle), 100);
 	}
 
 	fireInitialUnreadNotifications(unreadChats) {
