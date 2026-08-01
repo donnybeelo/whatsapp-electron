@@ -44,6 +44,7 @@ class WhatsAppInstance {
 		// Module Raid
 		this.mrid = null;
 		this.mrobj = {};
+		this.chatModule = null;
 
 		// Notification Wrapper
 		window.oldNotification = Notification;
@@ -53,30 +54,59 @@ class WhatsAppInstance {
 		);
 
 		// Mutation Oberver
+		// ponytail: countUnread() scans every <span> in the document, so running it
+		// per mutation record made scrolling crawl. Coalesce to one idle run per batch.
+		let unreadScheduled = false;
 		this.observer = new MutationObserver((mutations) => {
-			mutations.forEach((mutation) => {
-				this.countUnread();
+			if (!unreadScheduled) {
+				unreadScheduled = true;
+				requestIdleCallback(
+					() => {
+						unreadScheduled = false;
+						this.countUnread();
+					},
+					{ timeout: 1000 },
+				);
+			}
 
-				if (this.mrid == null) {
-					if (typeof mutation.target.ariaLabel === "string") {
-						if (
-							mutation.target.ariaLabel.search(
-								Constants.whatsapp.profilePicture,
-							) != -1
-						)
-							this.loadModuleRaid();
-					}
+			if (this.mrid != null) return;
+			for (const mutation of mutations) {
+				if (
+					typeof mutation.target.ariaLabel === "string" &&
+					mutation.target.ariaLabel.search(Constants.whatsapp.profilePicture) !=
+						-1
+				) {
+					this.loadModuleRaid();
+					break;
 				}
-			});
+			}
 		});
 
-		setTimeout(() => {
-			console.log("Starting Mutation Observer...");
-			this.observer.observe(document.body, {
+		// ponytail: unread badges only live in the chat list, so watch that instead of
+		// document.body -- otherwise every node the virtualised message list churns
+		// while scrolling allocates a MutationRecord. Retarget once the pane mounts;
+		// loadModuleRaid() has its own 3s poll, so nothing is lost in the meantime.
+		const observeUnread = () => {
+			const paneSide = document.getElementById("pane-side");
+			this.observer.disconnect();
+			this.observer.observe(paneSide || document.body, {
 				characterData: true,
 				childList: true,
 				subtree: true,
 			});
+			return !!paneSide;
+		};
+
+		setTimeout(() => {
+			console.log("Starting Mutation Observer...");
+			if (observeUnread()) return;
+			console.log("No #pane-side yet, watching document.body for now...");
+			const retarget = setInterval(() => {
+				if (observeUnread()) {
+					clearInterval(retarget);
+					console.log("Unread observer scoped to #pane-side.");
+				}
+			}, 2000);
 		}, 1000);
 
 		// Periodic check for moduleRaid
@@ -135,6 +165,7 @@ class WhatsAppInstance {
 		if (this.mrid != null && Object.keys(this.mrobj).length > 0) return;
 
 		console.log("Loading Module Raid...");
+		this.chatModule = null;
 
 		if (
 			window.Debug &&
@@ -301,44 +332,29 @@ class WhatsAppInstance {
 		let unread = 0;
 		let chats = 0;
 		let unreadTags = [];
-		const itens = document.getElementsByTagName("span");
-		for (const item of itens) {
-			if (item.hasAttributes()) {
-				for (const attr of item.attributes) {
-					if (
-						attr.name == "aria-label" &&
-						(attr.value == Constants.whatsapp.unreadText ||
-							attr.value.search(Constants.whatsapp.unreadTextSearch) != -1)
-					) {
-						const count = parseInt(item.innerText);
-						if (!isNaN(count)) {
-							unread += count;
-							chats += 1;
-
-							// Try to find the tag (chat ID) from the parent elements
-							let parent = item.parentElement;
-							while (parent && parent !== document.body) {
-								if (
-									parent.dataset &&
-									parent.dataset.testid === "cell-frame-container"
-								) {
-									// This is likely the chat item. We can't easily get the ID from here without moduleRaid
-									// But wait, if we have moduleRaid, we can use it.
-									break;
-								}
-								parent = parent.parentElement;
-							}
-						}
-					}
-				}
+		// ponytail: selector does the aria-label filter natively, and textContent
+		// avoids the forced reflow innerText caused on every badge.
+		for (const item of document.querySelectorAll("span[aria-label]")) {
+			const label = item.getAttribute("aria-label");
+			if (
+				label !== Constants.whatsapp.unreadText &&
+				label.search(Constants.whatsapp.unreadTextSearch) == -1
+			)
+				continue;
+			const count = parseInt(item.textContent);
+			if (!isNaN(count)) {
+				unread += count;
+				chats += 1;
 			}
 		}
 
 		if (this.mrobj && Object.keys(this.mrobj).length > 0) {
 			try {
-				const ChatModule = this.findModule(
-					(m) => m.default && m.default.Chat,
-				)[0];
+				// ponytail: findModule() is a linear scan over every webpack module in
+				// WhatsApp Web, so cache the hit instead of redoing it on every count.
+				if (!this.chatModule)
+					this.chatModule = this.findModule((m) => m.default && m.default.Chat)[0];
+				const ChatModule = this.chatModule;
 				if (ChatModule) {
 					const chats = ChatModule.default.Chat.getModelsArray();
 					unreadTags = chats
@@ -581,9 +597,12 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					overflow-y: hidden;
 				}
 
-				header button, [role="button"] {
-					-webkit-app-region: no-drag !important;
-				}
+					/* ponytail: scoped to header -- unscoped [role="button"] matched every
+					   interactive element in the message list, and each no-drag rect gets
+					   recomputed as you scroll. Drag regions only exist in the header. */
+					header button, header [role="button"] {
+						-webkit-app-region: no-drag !important;
+					}
 
 				.electron-window-controls-button {
 					transition: background 100ms, scale 100ms, opacity 150ms;
@@ -784,22 +803,38 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			// Add mutation observer to ensure the sidebar doesn't overlap with the window controls
 			const SIDEBAR_WIDTH = 72;
+			const nudge = (el) => {
+				const style = el.style;
+				if (!style?.left || !style.bottom) return;
+				if (parseFloat(style.left) < SIDEBAR_WIDTH)
+					style.left = `${SIDEBAR_WIDTH}px`;
+			};
+
+			// ponytail: only floating popups parented to body need this, so watch each
+			// one individually. A subtree style observer on body fires for every
+			// virtualised message row WhatsApp repositions while scrolling.
+			const styleObserver = new MutationObserver((mutations) => {
+				for (const { target } of mutations) nudge(target);
+			});
 			new MutationObserver((mutations) => {
-				for (const { target } of mutations) {
-					// ponytail: only floating popups parented to body -- the old page-wide
-					// version also rewrote WhatsApp's own pane/list positioning
-					if (target.parentElement !== document.body) continue;
-					const style = target.style;
-					if (!style?.left || !style.bottom) continue;
-					if (parseFloat(style.left) < SIDEBAR_WIDTH) {
-						style.left = `${SIDEBAR_WIDTH}px`;
+				for (const { addedNodes } of mutations) {
+					for (const node of addedNodes) {
+						if (node.nodeType !== Node.ELEMENT_NODE) continue;
+						nudge(node);
+						styleObserver.observe(node, {
+							attributes: true,
+							attributeFilter: ["style"],
+						});
 					}
 				}
-			}).observe(document.body, {
-				subtree: true,
-				attributes: true,
-				attributeFilter: ["style"],
-			});
+			}).observe(document.body, { childList: true });
+			for (const child of document.body.children) {
+				nudge(child);
+				styleObserver.observe(child, {
+					attributes: true,
+					attributeFilter: ["style"],
+				});
+			}
 
 			// Add window control buttons initially
 			addWindowControls();
