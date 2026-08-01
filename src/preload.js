@@ -24,9 +24,13 @@ const applyWindowControlsFocusFilter = () => {
 
 // Clear hover backgrounds for window controls (used in multiple places)
 const clearWindowControlsHover = () => {
-	document.querySelectorAll(".electron-window-controls-button").forEach((el) => {
-		try { el.style.background = ""; } catch (e) {}
-	});
+	document
+		.querySelectorAll(".electron-window-controls-button")
+		.forEach((el) => {
+			try {
+				el.style.background = "";
+			} catch (e) {}
+		});
 };
 
 class WhatsAppInstance {
@@ -636,7 +640,9 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			applyWindowControlsFocusFilter();
 			// If window regained focus (restored/unminimized), clear any lingering hover styles
 			if (windowIsFocused) {
-				try { clearWindowControlsHover(); } catch (e) {}
+				try {
+					clearWindowControlsHover();
+				} catch (e) {}
 			}
 		});
 
@@ -677,7 +683,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					closeButton.style.background = "";
 				});
 				actualCloseButton.addEventListener("mouseenter", () => {
-					closeButton.style.background = "var(--WDS-components-active-list-row)";
+					closeButton.style.background =
+						"var(--WDS-components-active-list-row)";
 				});
 				actualCloseButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.closeWindow);
@@ -702,7 +709,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					maximizeButton.style.background = "";
 				});
 				actualMaximizeButton.addEventListener("mouseenter", () => {
-					maximizeButton.style.background = "var(--WDS-components-active-list-row)";
+					maximizeButton.style.background =
+						"var(--WDS-components-active-list-row)";
 				});
 				actualMaximizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.maximizeWindow);
@@ -730,7 +738,8 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					minimizeButton.style.background = "";
 				});
 				actualMinimizeButton.addEventListener("mouseenter", () => {
-					minimizeButton.style.background = "var(--WDS-components-active-list-row)";
+					minimizeButton.style.background =
+						"var(--WDS-components-active-list-row)";
 				});
 				actualMinimizeButton.addEventListener("click", () => {
 					window.ipcRenderer.send(Constants.event.minimizeWindow);
@@ -743,9 +752,13 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 
 			// Clear hover backgrounds for window controls (fix persistent hover after minimize)
 			const clearWindowControlsHover = () => {
-				document.querySelectorAll(".electron-window-controls-button").forEach((el) => {
-					try { el.style.background = ""; } catch (e) {}
-				});
+				document
+					.querySelectorAll(".electron-window-controls-button")
+					.forEach((el) => {
+						try {
+							el.style.background = "";
+						} catch (e) {}
+					});
 			};
 
 			// When the document becomes visible again (unminimized/restored), clear any hover styles
@@ -794,6 +807,22 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			borderObserver.observe(document.body, {
 				childList: true,
 				subtree: false,
+			});
+
+			// Add mutation observer to ensure the sidebar doesn't overlap with the window controls
+			const SIDEBAR_WIDTH = 72;
+			new MutationObserver((mutations) => {
+				for (const { target } of mutations) {
+					const style = target.style;
+					if (!style?.left || !style.bottom) continue;
+					if (parseFloat(style.left) < SIDEBAR_WIDTH) {
+						style.left = `${SIDEBAR_WIDTH}px`;
+					}
+				}
+			}).observe(document.body, {
+				subtree: true,
+				attributes: true,
+				attributeFilter: ["style"],
 			});
 
 			// Add window control buttons initially
