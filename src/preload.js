@@ -543,15 +543,10 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		wa = new WhatsAppInstance(data.id, data.name);
 		window.wa = wa;
 
-		const isWindows = process.platform === "win32";
 		const isHyprland = data.isHyprland;
 		let isMaximized = false;
 
-		// Generate CSS based on maximize state
-		const generateStyles = (maximized) => {
-			const border = 0;
-
-			return `
+		const styles = `
 				/* Make all headers draggable */
 				header[tabindex="0"] {
 					-webkit-app-region: drag !important;
@@ -596,41 +591,23 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					width: 40px;
 				}
 			`;
-		};
 
 		const style = document.createElement("style");
 		style.id = "whatsapp-electron-style";
-		style.textContent = generateStyles(false);
+		style.textContent = styles;
 		document.head.appendChild(style);
 
 		window.ipcRenderer = require("electron").ipcRenderer;
 
-		// Function to update styles based on maximize state
-		const updateMaximizeStyles = (maximized) => {
-			isMaximized = maximized;
-			const styleEl = document.getElementById("whatsapp-electron-style");
-			if (styleEl) {
-				styleEl.textContent = generateStyles(maximized);
-			}
-
-			// Also update any dynamically added elements
-			if (!isWindows && !isHyprland) {
-				const maximizeButton = document.querySelector(".maximize-button");
-				if (maximizeButton) {
-					const svg = maximizeButton.querySelector("svg");
-					if (svg) {
-						svg.innerHTML = maximized ? restoreButtonSVG : maximizeButtonSVG;
-					}
-				}
-			}
-		};
-
-		// Listen for maximize state changes
+		// Swap the maximize button icon to match the window state
 		ipcRenderer.on(
 			Constants.event.windowMaximizeStateChanged,
 			(_event, data) => {
 				isMaximized = data.isMaximized;
-				updateMaximizeStyles(data.isMaximized);
+				const svg = document.querySelector(".maximize-button svg");
+				if (svg) {
+					svg.innerHTML = isMaximized ? restoreButtonSVG : maximizeButtonSVG;
+				}
 			},
 		);
 
@@ -788,26 +765,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			}
 			uiInitialized = true;
 			console.log("WhatsApp loaded, initializing UI...");
-
-			// Add mutation observer to ensure dynamically added elements get border-radius
-			const borderObserver = new MutationObserver((mutations) => {
-				mutations.forEach((mutation) => {
-					mutation.addedNodes.forEach((node) => {
-						if (node.nodeType === 1 && node.parentElement === document.body) {
-							// Apply border-radius to top-level elements added to body
-							if (!isWindows && !isMaximized && !isHyprland) {
-								node.style.borderRadius = "16px";
-								node.style.overflow = "hidden";
-							}
-						}
-					});
-				});
-			});
-
-			borderObserver.observe(document.body, {
-				childList: true,
-				subtree: false,
-			});
 
 			// Add mutation observer to ensure the sidebar doesn't overlap with the window controls
 			const SIDEBAR_WIDTH = 72;
