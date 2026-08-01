@@ -222,27 +222,43 @@ class WhatsAppInstance {
 
 		// ponytail: named requires instead of scanning 12k modules for a "Cmd" key --
 		// the scan can land on a stale duplicate that swallows the trigger silently
-		const { createWid } = self.require("WAWebWidFactory");
-		const { ChatCollection } = self.require("WAWebChatCollection");
-		const { Cmd } = self.require("WAWebCmd");
+		let chat;
+		try {
+			const { createWid } = self.require("WAWebWidFactory");
+			const { ChatCollection } = self.require("WAWebChatCollection");
+			const { Cmd } = self.require("WAWebCmd");
 
-		const chat = await ChatCollection.find(createWid(tag));
-		if (chat.unreadCount > 0) {
-			await Cmd.openChatFromUnread({ chat });
-		} else {
-			await Cmd.openChatBottom({ chat });
+			chat = await ChatCollection.find(createWid(tag));
+			if (!chat) throw new Error(`no chat for tag ${tag}`);
+
+			// ponytail: NOT awaited -- openChatFromUnread never resolves in current
+			// WhatsApp builds, which used to stall the DOM click below forever
+			const open =
+				chat.unreadCount > 0
+					? Cmd.openChatFromUnread({ chat })
+					: Cmd.openChatBottom({ chat });
+			Promise.resolve(open).catch((e) => console.error("openChat: Cmd", e));
+		} catch (e) {
+			// ponytail: WhatsApp renames/removes these modules regularly; log loudly and
+			// fall through to the DOM click, which is what actually opens the chat anyway.
+			console.error("openChat: Cmd path failed", e);
 		}
 
 		// ponytail: the Cmd only focuses the row in current WhatsApp builds, so click it.
 		// Matches on the visible title; the chat list is virtualised, so this only works
 		// for rows currently rendered -- fine for notifications, which are recent chats.
-		setTimeout(() => this.clickChatRow(chat.formattedTitle), 100);
+		setTimeout(() => this.clickChatRow(chat?.formattedTitle), 100);
 	}
 
 	clickChatRow(title) {
-		const row = [...document.querySelectorAll('#pane-side [role="row"]')].find(
+		if (!title) return;
+		const rows = document.querySelectorAll(
+			'#pane-side [role="row"], #pane-side [role="listitem"]',
+		);
+		const row = [...rows].find(
 			(r) => r.querySelector("span[title]")?.title === title,
 		);
+		if (!row) console.warn("clickChatRow: no visible row for", title);
 		const target =
 			row?.querySelector('[data-testid="cell-frame-container"]') || row;
 		if (!target) return;
@@ -770,6 +786,9 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			const SIDEBAR_WIDTH = 72;
 			new MutationObserver((mutations) => {
 				for (const { target } of mutations) {
+					// ponytail: only floating popups parented to body -- the old page-wide
+					// version also rewrote WhatsApp's own pane/list positioning
+					if (target.parentElement !== document.body) continue;
 					const style = target.style;
 					if (!style?.left || !style.bottom) continue;
 					if (parseFloat(style.left) < SIDEBAR_WIDTH) {
