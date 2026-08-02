@@ -810,24 +810,36 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 					style.left = `${SIDEBAR_WIDTH}px`;
 			};
 
-			// ponytail: only floating popups parented to body need this, so watch each
-			// one individually. A subtree style observer on body fires for every
-			// virtualised message row WhatsApp repositions while scrolling.
+			// ponytail: watch each floating popup individually -- a subtree style observer
+			// on body fires for every virtualised message row WhatsApp repositions while
+			// scrolling. Popups are the only nodes mounted with inline left+bottom, so
+			// that pair is the filter; message rows use transform/top and are skipped.
+			const isFloating = (el) => el.style?.left && el.style.bottom;
 			const styleObserver = new MutationObserver((mutations) => {
 				for (const { target } of mutations) nudge(target);
 			});
+			const watch = (el) => {
+				nudge(el);
+				styleObserver.observe(el, {
+					attributes: true,
+					attributeFilter: ["style"],
+				});
+			};
+
 			new MutationObserver((mutations) => {
 				for (const { addedNodes } of mutations) {
 					for (const node of addedNodes) {
-						if (node.nodeType !== Node.ELEMENT_NODE) continue;
-						nudge(node);
-						styleObserver.observe(node, {
-							attributes: true,
-							attributeFilter: ["style"],
-						});
+						if (node.nodeType === Node.ELEMENT_NODE && isFloating(node)) {
+							watch(node);
+						}
 					}
 				}
-			}).observe(document.body, { childList: true });
+			}).observe(document.body, { childList: true, subtree: true });
+
+			// the call box may already be mounted by the time the UI initialises
+			document.querySelectorAll("div[style*='bottom']").forEach((el) => {
+				if (isFloating(el)) watch(el);
+			});
 			for (const child of document.body.children) {
 				nudge(child);
 				styleObserver.observe(child, {
