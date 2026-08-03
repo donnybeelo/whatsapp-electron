@@ -11,6 +11,7 @@ import {
 	screen,
 	clipboard,
 } from "electron";
+import fs from "node:fs";
 import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "url";
@@ -53,10 +54,10 @@ if (startInBackground) {
 class WhatsAppElectron {
 	constructor() {
 		this.baseIcon = !app.isPackaged
-			? path.join(__dirname, "../assets/whatsapp-icon-outline.png")
+			? path.join(__dirname, "../assets/whatsapp-outline.png")
 			: path.join(
 					process.resourcesPath,
-					"app.asar.unpacked/assets/whatsapp-icon-outline.png",
+					"app.asar.unpacked/assets/whatsapp-outline.png",
 				);
 		this.isQuit = false;
 		this.isHyprland =
@@ -158,7 +159,39 @@ class WhatsAppElectron {
 		}, 10000);
 	}
 
+	// ponytail: plain file copy, no gtk-update-icon-cache (GTK scans uncached
+	// dirs fine). Add the cache update if an icon theme ever shadows this.
+	installSymbolicIcon() {
+		if (process.platform !== "linux") return;
+		const src = path.join(path.dirname(this.baseIcon), "whatsapp-symbolic.svg");
+		const dir = path.join(
+			app.getPath("home"),
+			".local/share/icons/hicolor/symbolic/apps",
+		);
+		try {
+			fs.mkdirSync(dir, { recursive: true });
+			const names = ["whatsapp"];
+			// appimaged/AppImageLauncher install our icon under a prefixed name and
+			// point the desktop entry at that, so mirror the symbolic icon to match
+			const hicolor = path.join(dir, "../../512x512/apps");
+			if (fs.existsSync(hicolor)) {
+				names.push(
+					...fs
+						.readdirSync(hicolor)
+						.filter((f) => /^appimagekit_.*_whatsapp\.png$/.test(f))
+						.map((f) => path.basename(f, ".png")),
+				);
+			}
+			for (const name of names) {
+				fs.copyFileSync(src, path.join(dir, `${name}-symbolic.svg`));
+			}
+		} catch (e) {
+			console.error("Failed to install symbolic icon:", e);
+		}
+	}
+
 	init() {
+		this.installSymbolicIcon();
 		this._initElectronApp();
 		this.handleProtocolUrl(process.argv);
 		this.createWindow();
