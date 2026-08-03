@@ -52,6 +52,18 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      - name: Embed AppImage update information
+        run: |
+          sudo apt-get update && sudo apt-get install -y zsync
+          f=$(ls dist/WhatsApp*.AppImage)
+          # electron-builder leaves the runtime's .upd_info section empty; write it
+          # in place (objcopy would rewrite the ELF and drop the appended squashfs)
+          read off size < <(readelf -SW "$f" | awk '$2==".upd_info"{print $5, $6}')
+          info="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|WhatsApp-*.AppImage.zsync"
+          [ ${#info} -lt $((16#$size)) ] || { echo "update info too long"; exit 1; }
+          printf '%s' "$info" | dd of="$f" bs=1 seek=$((16#$off)) conv=notrunc status=none
+          zsyncmake -u "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$(basename "$f")" -o "$f.zsync" "$f"
+
       - name: Rename Windows executable
         run: |
           cd dist
@@ -68,6 +80,7 @@ jobs:
           path: |
             dist/WhatsApp*.exe
             dist/WhatsApp*.AppImage
+            dist/WhatsApp*.AppImage.zsync
             dist/WhatsApp*-win.zip
 
       - name: Create GitHub Release
@@ -76,6 +89,7 @@ jobs:
           files: |
             dist/WhatsApp*.exe
             dist/WhatsApp*.AppImage
+            dist/WhatsApp*.AppImage.zsync
             dist/WhatsApp*-win.zip
           body_path: changelog.txt
         env:
