@@ -33,6 +33,23 @@ const clearWindowControlsHover = () => {
 		});
 };
 
+// ponytail: hand-rolled grey avatar to match WhatsApp's own notification default.
+// Can't reuse theirs: no static asset (all the /img/avatar-* paths 404) and the
+// chat-list SVG colours come from CSS vars, which don't survive as a data URL.
+const defaultAvatar = (isGroup) =>
+	"data:image/svg+xml;charset=utf-8," +
+	encodeURIComponent(
+		`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 48 48">` +
+			`<circle cx="24" cy="24" r="24" fill="#dfe5e7"/>` +
+			`<g fill="#ffffff">` +
+			(isGroup
+				? `<circle cx="17" cy="19" r="6"/><circle cx="32" cy="19" r="6"/>` +
+					`<path d="M6 38c0-6 5-9.5 11-9.5S28 32 28 38z"/>` +
+					`<path d="M43 38c0-6-5-9.5-11-9.5-1.6 0-3.1.3-4.4.8 2.6 2 4.4 5 4.4 8.7z"/>`
+				: `<circle cx="24" cy="18" r="8"/><path d="M8 40c0-8.8 7.2-14 16-14s16 5.2 16 14z"/>`) +
+			`</g></svg>`,
+	);
+
 class WhatsAppInstance {
 	constructor(id, name) {
 		// self
@@ -321,7 +338,7 @@ class WhatsAppInstance {
 
 			new NotificationServer(chat.formattedTitle || "WhatsApp", {
 				body: lastBody || `${n} unread message${n > 1 ? "s" : ""}`,
-				icon: icon,
+				icon: icon || defaultAvatar(chat.isGroup),
 				tag: chat.id._serialized || chat.id,
 				silent: true,
 			});
