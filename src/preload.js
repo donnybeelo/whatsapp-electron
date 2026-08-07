@@ -33,21 +33,24 @@ const clearWindowControlsHover = () => {
 		});
 };
 
-// ponytail: hand-rolled grey avatar to match WhatsApp's own notification default.
-// Can't reuse theirs: no static asset (all the /img/avatar-* paths 404) and the
-// chat-list SVG colours come from CSS vars, which don't survive as a data URL.
+// Paths lifted verbatim from WhatsApp Web's WAWebDefaultGroupIcon.react /
+// WAWebDefaultUserIcon.react. In-page they render as components with the fill
+// from CSS vars, so there's no URL to point at — inlined here with the colours
+// resolved (#DFE5E7 disc, white figure).
+const AVATAR_BG =
+	"M105.95.25C164.32.25 211.64 47.6 211.64 106s-47.32 105.75-105.7 105.75C47.57 211.75.25 164.4.25 106S47.57.25 105.95.25Z";
+const AVATAR_GROUP =
+	"M102.28 77.29c0 10.67-8.42 19.28-18.94 19.28-10.51 0-19-8.61-19-19.28 0-10.68 8.49-19.29 19-19.29 10.52 0 18.94 8.61 18.94 19.29Zm48.07 2.85c0 9.8-7.74 17.72-17.4 17.72a17.56 17.56 0 0 1-17.45-17.72c0-9.8 7.8-17.71 17.45-17.71 9.66 0 17.4 7.91 17.4 17.71Zm-67.01 29.29c-14.76 0-44.34 7.52-44.34 22.5v11.78c0 3.54 2.85 4.29 6.33 4.29h76.02c3.48 0 6.33-.75 6.33-4.29v-11.78c0-14.98-29.58-22.5-44.34-22.5Zm43.46 1.42 2.2.04c14.76 0 45 6.06 45 21.04v9.64a6.4 6.4 0 0 1-6.33 6.43h-32.82c.7-2 1.15-4.18 1.15-6.43l-.25-10.5c0-9.56-5.61-13.21-11.59-17.1a84.1 84.1 0 0 1-4.22-2.9.6.6 0 0 0-.2-.18c1.6-.14 4.75-.08 7.06-.04Z";
+const AVATAR_USER =
+	"M173.56 171.62a62.77 62.77 0 0 0-4.67-6.26 70.11 70.11 0 0 0-9.11-9 72.46 72.46 0 0 0-16.18-10.08l-.18-.08c-9.8-4.44-22.11-7.53-37.42-7.53s-27.62 3.09-37.42 7.53l-.98.47a75.37 75.37 0 0 0-6.23 3.3 72.59 72.59 0 0 0-15.07 11.86 70.06 70.06 0 0 0-7.86 9.78 63.2 63.2 0 0 0-1.45 2.33l-.1.17c-.44.75-.8 1.4-1.07 1.93-.56 1.07-.82 1.68-.82 1.68v.4a101.01 101.01 0 0 0 70.94 28.98c27.68 0 52.77-11.1 71.06-29.1v-.29s-.62-1.45-2-3.77c-.4-.7-.88-1.48-1.44-2.32zM106 125.5a39.87 39.87 0 0 0 11.3-1.63 37.12 37.12 0 0 0 11.28-5.63 35.92 35.92 0 0 0 11.9-15.32 37.05 37.05 0 0 0 2.45-8.95 40.28 40.28 0 0 0-1.22-17.12 37.05 37.05 0 0 0-5.63-11.27 35.92 35.92 0 0 0-13.65-11.18 37.12 37.12 0 0 0-8.75-2.85 39.87 39.87 0 0 0-7.68-.74c-21.16 0-37.34 16.19-37.34 37.35S84.84 125.5 106 125.5z";
+
 const defaultAvatar = (isGroup) =>
 	"data:image/svg+xml;charset=utf-8," +
 	encodeURIComponent(
-		`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 48 48">` +
-			`<circle cx="24" cy="24" r="24" fill="#dfe5e7"/>` +
-			`<g fill="#ffffff">` +
-			(isGroup
-				? `<circle cx="17" cy="19" r="6"/><circle cx="32" cy="19" r="6"/>` +
-					`<path d="M6 38c0-6 5-9.5 11-9.5S28 32 28 38z"/>` +
-					`<path d="M43 38c0-6-5-9.5-11-9.5-1.6 0-3.1.3-4.4.8 2.6 2 4.4 5 4.4 8.7z"/>`
-				: `<circle cx="24" cy="18" r="8"/><path d="M8 40c0-8.8 7.2-14 16-14s16 5.2 16 14z"/>`) +
-			`</g></svg>`,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="212" height="212" viewBox="0 0 212 212">` +
+			`<path fill="#DFE5E7" d="${AVATAR_BG}"/>` +
+			`<path fill="#FFFFFF" fill-rule="evenodd" clip-rule="evenodd" d="${isGroup ? AVATAR_GROUP : AVATAR_USER}"/>` +
+			`</svg>`,
 	);
 
 class WhatsAppInstance {
@@ -338,7 +341,12 @@ class WhatsAppInstance {
 
 			new NotificationServer(chat.formattedTitle || "WhatsApp", {
 				body: lastBody || `${n} unread message${n > 1 ? "s" : ""}`,
-				icon: icon || defaultAvatar(chat.isGroup),
+				// chat.isGroup isn't on the internal model; the jid suffix always is
+				icon:
+					icon ||
+					defaultAvatar(
+						String(chat.id?._serialized || chat.id).endsWith("@g.us"),
+					),
 				tag: chat.id._serialized || chat.id,
 				silent: true,
 			});
