@@ -521,10 +521,16 @@ class NotificationServer {
 
 							ctx.restore();
 
-							// Downscale for output
+							// Downscale for output. The cap matters: inside flatpak
+							// libnotify goes through the XDG notification portal, which
+							// silently drops icons the size a full-res avatar produces
+							// (~600KB PNG). Unsandboxed builds talk to
+							// org.freedesktop.Notifications directly and never hit it.
+							// No shell renders a notification icon above 128px anyway.
+							const outputSize = Math.min(size / scale, 128);
 							const outputCanvas = document.createElement("canvas");
-							outputCanvas.width = size / scale;
-							outputCanvas.height = size / scale;
+							outputCanvas.width = outputSize;
+							outputCanvas.height = outputSize;
 							const outputCtx = outputCanvas.getContext("2d");
 							outputCtx.drawImage(
 								canvas,
