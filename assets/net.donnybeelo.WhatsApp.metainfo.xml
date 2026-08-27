@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>net.donnybeelo.WhatsApp</id>
+  <name>WhatsApp</name>
+  <summary>Unofficial WhatsApp desktop client</summary>
+  <developer id="net.donnybeelo">
+    <name>Daniel Elia</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>ISC</project_license>
+  <description>
+    <p>
+      An unofficial desktop client for WhatsApp Web, built with Electron. Adds
+      a tray icon, native desktop notifications, window state memory and a
+      background start mode.
+    </p>
+    <p>Not affiliated with or endorsed by WhatsApp LLC or Meta.</p>
+  </description>
+  <launchable type="desktop-id">net.donnybeelo.WhatsApp.desktop</launchable>
+  <url type="homepage">https://github.com/donnybeelo/whatsapp-electron</url>
+  <url type="bugtracker">https://github.com/donnybeelo/whatsapp-electron/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/user-attachments/assets/69929254-9899-4eb9-b3cb-961401c6a2f4</image>
+      <caption>The main window</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+    <content_attribute id="social-audio">intense</content_attribute>
+    <content_attribute id="social-info">intense</content_attribute>
+  </content_rating>
+  <releases>
+    <release version="3.2.2" date="2026-08-27"/>
+  </releases>
+</component>

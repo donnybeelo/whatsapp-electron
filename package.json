@@ -20,7 +20,6 @@
 	},
 	"build": {
 		"linux": {
-			"appId": "whatsapp",
 			"desktop": {
 				"entry": {
 					"StartupWMClass": "whatsapp"
@@ -29,7 +28,8 @@
 			"icon": "./assets/whatsapp-512x512.png",
 			"category": "Network",
 			"target": [
-				"AppImage"
+				"AppImage",
+				"flatpak"
 			],
 			"executableArgs": [
 				"--no-sandbox"
@@ -59,7 +59,31 @@
 					"whatsapp"
 				]
 			}
-		]
+		],
+		"appId": "net.donnybeelo.WhatsApp",
+		"flatpak": {
+			"runtimeVersion": "24.08",
+			"baseVersion": "24.08",
+			"branch": "stable",
+			"files": [
+				[
+					"assets/net.donnybeelo.WhatsApp.metainfo.xml",
+					"/share/metainfo/net.donnybeelo.WhatsApp.metainfo.xml"
+				]
+			],
+			"finishArgs": [
+				"--socket=wayland",
+				"--socket=x11",
+				"--share=ipc",
+				"--device=dri",
+				"--socket=pulseaudio",
+				"--filesystem=home",
+				"--share=network",
+				"--talk-name=org.freedesktop.Notifications",
+				"--talk-name=org.kde.StatusNotifierWatcher",
+				"--device=all"
+			]
+		}
 	},
 	"dependencies": {
 		"ajv": "^8.20.0",
