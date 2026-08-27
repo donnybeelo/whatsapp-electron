@@ -417,9 +417,13 @@ class NotificationServer {
 				.replace(Constants.whatsapp.url, "")
 				.replace("%3F", "?");
 		}
-		// An expired thumb URL leaves _getIcon with nothing; a grey default
-		// avatar reads better than an empty slot where a photo should be.
+		// WhatsApp's cached thumb URLs carry an oe= expiry and are routinely
+		// dead on a cold start, which is when the unread-summary notifications
+		// fire. Refetch from the server before settling for a grey default.
 		let icon = await this._getIcon(options.icon);
+		if (options.icon && !icon && options.tag) {
+			icon = await this._refreshedIcon(options.tag);
+		}
 		if (options.icon && !icon) {
 			icon = await this._getIcon(
 				defaultAvatar(String(options.tag || "").endsWith("@g.us")),
@@ -437,6 +441,23 @@ class NotificationServer {
 			Constants.event.newRendererNotification,
 			serverNotification,
 		);
+	}
+
+	// find() re-requests a model that has been marked stale, which is the only
+	// way back to a working URL once the cached one has expired.
+	async _refreshedIcon(tag) {
+		try {
+			const { ProfilePicThumbCollection } = self.require(
+				"WAWebProfilePicThumbCollection",
+			);
+			const { createWid } = self.require("WAWebWidFactory");
+			const id = createWid(tag);
+			(await ProfilePicThumbCollection.find(id))?.markStale?.();
+			const pic = await ProfilePicThumbCollection.find(id);
+			return await this._getIcon(pic?.imgFull || pic?.img);
+		} catch (e) {
+			return undefined;
+		}
 	}
 
 	_getIcon(icon) {
