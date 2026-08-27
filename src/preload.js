@@ -66,13 +66,6 @@ class WhatsAppInstance {
 		this.mrobj = {};
 		this.chatModule = null;
 
-		// Notification Wrapper
-		window.oldNotification = Notification;
-		window.Notification = NotificationServer;
-		console.log(
-			"Window Notifications Object Replaced by NotificationServer...",
-		);
-
 		// Mutation Oberver
 		// ponytail: countUnread() scans every <span> in the document, so running it
 		// per mutation record made scrolling crawl. Coalesce to one idle run per batch.
@@ -426,7 +419,7 @@ class NotificationServer {
 		}
 		const serverNotification = JSON.parse(
 			JSON.stringify({
-				id: wa.getId(),
+				id: wa?.getId(),
 				title: title,
 				options: options,
 				icon: await this._getIcon(options.icon),
@@ -551,6 +544,15 @@ class NotificationServer {
 // Events
 let Constants = {};
 let wa = null;
+
+// Swap in the notification wrapper at preload time, not when the main process
+// finishes the init-whatsapp-instance round-trip: WhatsApp Web can fire its
+// first notifications before that IPC lands, and those arrive with no avatar
+// and no tag. Slow cold starts (flatpak sandbox, cold cache) hit this every
+// launch; a warm AppImage start almost never does.
+window.oldNotification = Notification;
+window.Notification = NotificationServer;
+console.log("Window Notifications Object Replaced by NotificationServer...");
 const maximizeButtonSVG =
 	'<path fill="currentColor" d="M19 5v14H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>';
 const restoreButtonSVG =
