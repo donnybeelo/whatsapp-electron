@@ -327,9 +327,13 @@ class WhatsAppInstance {
 			try {
 				const pic = await ProfilePicThumbCollection.find(chat.id);
 				// NotificationServer circles the icon and draws the border
-				icon = pic?.imgFull || pic?.img;
+				const url = pic?.imgFull || pic?.img;
+				// On a cold start the cached URL is often past its oe= expiry and
+				// 404s; fall through to the default avatar rather than letting
+				// _getIcon turn the error body into an empty image.
+				if (url && (await fetch(url)).ok) icon = url;
 			} catch (e) {
-				// no picture set, or not synced yet
+				// no picture set, not synced yet, or the thumb URL has expired
 			}
 
 			new NotificationServer(chat.formattedTitle || "WhatsApp", {
@@ -434,10 +438,9 @@ class NotificationServer {
 	_getIcon(icon) {
 		if (!icon) return;
 
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve) => {
 			fetch(icon)
-				.then((r) => r.blob())
-				.catch(reject)
+				.then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.status))))
 				.then((blob) => {
 					const reader = new FileReader();
 					reader.onload = (event) => {
@@ -515,7 +518,11 @@ class NotificationServer {
 						img.src = event.target.result;
 					};
 					reader.readAsDataURL(blob);
-				});
+				})
+				// A broken icon must not take the notification down with it:
+				// _processOptions awaits this before handing off to the main
+				// process, so resolve undefined and fire without an avatar.
+				.catch(() => resolve(undefined));
 		});
 	}
 
