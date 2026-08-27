@@ -14,7 +14,7 @@
 		"clean": "rm -rf ./dist",
 		"pack": "electron-builder --dir",
 		"dist": "electron-builder",
-		"dist:linux": "electron-builder --linux --x64",
+		"dist:linux": "scripts/sync-metainfo.sh && electron-builder --linux --x64",
 		"dist:windows": "electron-builder --windows --x64",
 		"release": "scripts/release-tag.sh v$npm_package_version"
 	},
@@ -67,7 +67,7 @@
 			"branch": "stable",
 			"files": [
 				[
-					"assets/net.donnybeelo.WhatsApp.metainfo.xml",
+					"dist/net.donnybeelo.WhatsApp.metainfo.xml",
 					"/share/metainfo/net.donnybeelo.WhatsApp.metainfo.xml"
 				],
 				[
