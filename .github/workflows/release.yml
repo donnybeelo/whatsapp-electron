@@ -44,7 +44,17 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build Linux AppImage
+      - name: Install flatpak tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flatpak flatpak-builder ostree
+          sudo flatpak remote-add --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive --no-static-deltas flathub \
+            org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 \
+            org.electronjs.Electron2.BaseApp//24.08
+
+      - name: Build Linux AppImage and flatpak
         run: bun dist:linux -- --publish=never
 
       - name: Build Windows distributables
@@ -94,3 +104,70 @@ jobs:
           body_path: changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publishing to the shared ostree repo happens only here, on a version
+      # tag, so an untagged push never moves what users get from
+      # releases.donnybeelo.net.
+      - name: Check out the flatpak repo
+        uses: actions/checkout@v4
+        with:
+          repository: donnybeelo/donnybeelo-releases
+          token: ${{ secrets.RELEASES_TOKEN }}
+          path: releases
+          fetch-depth: 0
+
+      # git cannot track empty directories, so a fresh clone of the ostree
+      # repo is missing refs/remotes, state and friends, and ostree fails with
+      # "Listing refs: opendir(refs/remotes)".
+      - name: Recreate ostree directories git cannot store
+        run: mkdir -p releases/refs/heads releases/refs/mirrors releases/refs/remotes releases/state releases/extensions releases/tmp/cache
+
+      - name: Import signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "::error::GPG_PRIVATE_KEY secret is not set" && exit 1
+          fi
+          printf '%s' "$GPG_PRIVATE_KEY" | base64 -d | gpg --batch --import
+          echo "GPG_KEY=$(gpg --list-secret-keys --with-colons \
+            | awk -F: '/^fpr:/{print $10; exit}')" >> "$GITHUB_ENV"
+
+      - name: Import the bundle and re-sign the repo
+        run: |
+          flatpak build-import-bundle --gpg-sign="$GPG_KEY" \
+            releases dist/WhatsApp-*-x86_64.flatpak
+          flatpak build-update-repo releases \
+            --title="Daniel Elia's Flatpaks" \
+            --comment="Flatpak releases by Daniel Elia" \
+            --homepage="https://donnybeelo.net" \
+            --default-branch=stable \
+            --generate-static-deltas --prune \
+            --gpg-sign="$GPG_KEY"
+
+      # build-update-repo does not touch the site files, but a stray delete
+      # would silently unpublish the repo.
+      - name: Sanity-check the site files
+        run: |
+          cd releases
+          for f in CNAME .nojekyll index.html donnybeelo.flatpakrepo donnybeelo-key.asc; do
+            [ -e "$f" ] || { echo "::error::$f is missing"; exit 1; }
+          done
+          test -s summary && test -s summary.sig
+
+      - name: Publish
+        run: |
+          cd releases
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing changed; not committing."
+            exit 0
+          fi
+          git commit -m "WhatsApp ${GITHUB_REF_NAME#v}"
+
+          # Another app may have been published into this shared repo while we
+          # were building, so land on top of it rather than being rejected.
+          git pull --rebase --autostash origin main
+          git push
