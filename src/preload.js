@@ -327,13 +327,9 @@ class WhatsAppInstance {
 			try {
 				const pic = await ProfilePicThumbCollection.find(chat.id);
 				// NotificationServer circles the icon and draws the border
-				const url = pic?.imgFull || pic?.img;
-				// On a cold start the cached URL is often past its oe= expiry and
-				// 404s; fall through to the default avatar rather than letting
-				// _getIcon turn the error body into an empty image.
-				if (url && (await fetch(url)).ok) icon = url;
+				icon = pic?.imgFull || pic?.img;
 			} catch (e) {
-				// no picture set, not synced yet, or the thumb URL has expired
+				// no picture set, or not synced yet
 			}
 
 			new NotificationServer(chat.formattedTitle || "WhatsApp", {
@@ -421,12 +417,20 @@ class NotificationServer {
 				.replace(Constants.whatsapp.url, "")
 				.replace("%3F", "?");
 		}
+		// An expired thumb URL leaves _getIcon with nothing; a grey default
+		// avatar reads better than an empty slot where a photo should be.
+		let icon = await this._getIcon(options.icon);
+		if (options.icon && !icon) {
+			icon = await this._getIcon(
+				defaultAvatar(String(options.tag || "").endsWith("@g.us")),
+			);
+		}
 		const serverNotification = JSON.parse(
 			JSON.stringify({
 				id: wa?.getId(),
 				title: title,
 				options: options,
-				icon: await this._getIcon(options.icon),
+				icon: icon,
 			}),
 		);
 		ipcRenderer.send(
