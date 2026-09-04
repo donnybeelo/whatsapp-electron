@@ -61,6 +61,7 @@
 			}
 		],
 		"appId": "net.donnybeelo.WhatsApp",
+		"npmRebuild": false,
 		"flatpak": {
 			"runtimeVersion": "24.08",
 			"baseVersion": "24.08",
@@ -69,6 +70,10 @@
 				[
 					"dist/net.donnybeelo.WhatsApp.metainfo.xml",
 					"/share/metainfo/net.donnybeelo.WhatsApp.metainfo.xml"
+				],
+				[
+					"assets/net.donnybeelo.WhatsApp.service",
+					"/share/dbus-1/services/net.donnybeelo.WhatsApp.service"
 				],
 				[
 					"assets/whatsapp-symbolic.svg",
@@ -83,6 +88,7 @@
 				"--socket=pulseaudio",
 				"--filesystem=home",
 				"--share=network",
+				"--talk-name=org.gtk.Notifications",
 				"--talk-name=org.freedesktop.Notifications",
 				"--talk-name=org.kde.StatusNotifierWatcher",
 				"--device=all"
@@ -91,6 +97,7 @@
 	},
 	"dependencies": {
 		"ajv": "^8.20.0",
+		"dbus-next": "^0.10.2",
 		"electron-window-state": "^5.0.3"
 	},
 	"devDependencies": {

@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=net.donnybeelo.WhatsApp
+Exec=/app/bin/electron-wrapper

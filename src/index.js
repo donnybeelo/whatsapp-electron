@@ -22,9 +22,9 @@ const __dirname = path.dirname(__filename);
 
 app.setAppUserModelId("whatsapp");
 
-// Set desktop name for Linux notifications (AppImage)
+// Set desktop name so the shell can attribute notifications to the installed app
 if (process.platform === "linux") {
-	app.setDesktopName("whatsapp.desktop");
+	app.setDesktopName(`${process.env.FLATPAK_ID || "whatsapp"}.desktop`);
 }
 
 if (process.defaultApp) {
@@ -66,6 +66,9 @@ class WhatsAppElectron {
 
 		this.notifications = new Map();
 		this.startUrl = null;
+		// undefined = nothing pending; null = plain Activate with no chat
+		this.pendingChatTag = undefined;
+		this.rendererReady = false;
 
 		this.menuTemplate = [
 			{
@@ -256,29 +259,28 @@ class WhatsAppElectron {
 				this.notifications.get(data.options.tag).close();
 			}
 
-			const n = new Notification({
-				title: data.title,
-				body: data.options.body,
-				icon: data.icon ? nativeImage.createFromDataURL(data.icon) : undefined,
-				silent: data.options.silent,
-			});
-
-			if (data.options.tag) {
-				this.notifications.set(data.options.tag, n);
-				n.on("close", () => {
-					this.notifications.delete(data.options.tag);
-				});
+			if (portal) {
+				portal
+					.show({
+						tag: data.options.tag,
+						title: data.title,
+						body: data.options.body,
+						icon: data.icon,
+						silent: data.options.silent,
+					})
+					.then((sent) => {
+						if (!sent) return this.showLibnotify(data);
+						// stand-in so the close/sweep paths below stay portal-agnostic
+						if (data.options.tag) {
+							this.notifications.set(data.options.tag, {
+								close: () => portal.close(data.options.tag),
+							});
+						}
+					});
+				return;
 			}
 
-			n.on("click", (event) => {
-				// console.log("Notification Clicked...", data.id, data.options.tag);
-				this.showHide(false);
-				this.window.webContents.send(
-					Constants.event.fireNotificationClick,
-					data.options.tag,
-				);
-			});
-			n.show();
+			this.showLibnotify(data);
 		});
 
 		// Relay notification close from renderer
@@ -311,6 +313,47 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.closeWindow, () => {
 			this.window.close();
 		});
+	}
+
+	// Electron's libnotify path: the click only works while this process lives
+	showLibnotify(data) {
+		const n = new Notification({
+			title: data.title,
+			body: data.options.body,
+			icon: data.icon ? nativeImage.createFromDataURL(data.icon) : undefined,
+			silent: data.options.silent,
+		});
+
+		if (data.options.tag) {
+			this.notifications.set(data.options.tag, n);
+			n.on("close", () => {
+				this.notifications.delete(data.options.tag);
+			});
+		}
+
+		n.on("click", () => {
+			this.showHide(false);
+			this.window.webContents.send(
+				Constants.event.fireNotificationClick,
+				data.options.tag,
+			);
+		});
+		n.show();
+	}
+
+	// Portal notification clicked; may arrive before the window exists on a cold
+	// D-Bus activation, so stash it like startUrl and flush once we have one.
+	openChatFromPortal(tag) {
+		// The renderer only registers its click listener when it gets
+		// initWhatsAppInstance, so anything sent before that is dropped.
+		if (!this.window || !this.rendererReady) {
+			this.pendingChatTag = tag;
+			return;
+		}
+		this.showHide(false);
+		if (tag) {
+			this.window.webContents.send(Constants.event.fireNotificationClick, tag);
+		}
 	}
 
 	createWindow() {
@@ -574,7 +617,17 @@ class WhatsAppElectron {
 			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
 				isFocused: this.window.isFocused(),
 			});
+
+			// IPC is ordered, so anything sent after initWhatsAppInstance lands
+			// after the renderer's listeners are registered.
+			this.rendererReady = true;
+			if (this.pendingChatTag !== undefined) {
+				const tag = this.pendingChatTag;
+				this.pendingChatTag = undefined;
+				this.openChatFromPortal(tag);
+			}
 		});
+
 
 		// Connectivity check
 		this.checkInternet().then((isOnline) => {
@@ -676,6 +729,7 @@ class WhatsAppElectron {
 import { init as initConstants } from "./constants.js";
 import { MenuItem } from "electron/main";
 let Constants = {};
+let portal = null;
 // webSecurity:false stops Chromium honouring COOP/COEP (Electron 41+), which drops
 // SharedArrayBuffer; WhatsApp gates calling on it. Re-enable SAB without isolation.
 // Must run before app is ready, or the renderer never sees the feature.
@@ -686,9 +740,20 @@ app.commandLine.appendSwitch(
 
 const ws = new WhatsAppElectron();
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
 	Constants = initConstants(app.getSystemLocale());
 	ws.init();
+
+	// Flatpak only: the portal delivers clicks via D-Bus activation, so they still
+	// work after we quit. Elsewhere libnotify is fine and needs no bus name.
+	if (process.platform === "linux" && process.env.FLATPAK_ID) {
+		try {
+			const mod = await import("./portal-notifications.js");
+			if (await mod.init((tag) => ws.openChatFromPortal(tag))) portal = mod;
+		} catch (e) {
+			console.error("Failed to load notification portal:", e);
+		}
+	}
 });
 
 app.on("second-instance", (event, argv) => {

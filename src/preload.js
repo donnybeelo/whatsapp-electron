@@ -4,6 +4,13 @@ ipcRenderer.on("poll-refresh", () => {
 	window.dispatchEvent(new CustomEvent("poll-refresh"));
 });
 
+// Resolved by initializeUI(), i.e. the same sidebar-detected signal the window
+// controls wait for. did-finish-load is several seconds too early for the SPA.
+let whatsappLoaded;
+const whatsappReady = new Promise((resolve) => {
+	whatsappLoaded = resolve;
+});
+
 let windowIsFocused = true;
 
 const applyWindowControlsFocusFilter = () => {
@@ -134,7 +141,8 @@ class WhatsAppInstance {
 		// Events
 		ipcRenderer.on(Constants.event.fireNotificationClick, (event, tag) => {
 			//console.log("Received Notification Click from Main...", tag);
-			this.openChat(tag);
+			// On a cold D-Bus activation the click lands long before the SPA is up
+			whatsappReady.then(() => this.openChat(tag));
 		});
 
 		ipcRenderer.on(Constants.event.buildBadgeIcon, (event, data) => {
@@ -865,6 +873,7 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			}
 			uiInitialized = true;
 			console.log("WhatsApp loaded, initializing UI...");
+			whatsappLoaded();
 
 			// Add mutation observer to ensure the sidebar doesn't overlap with the window controls
 			const SIDEBAR_WIDTH = 72;
