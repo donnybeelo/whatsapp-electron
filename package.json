@@ -46,7 +46,7 @@
 				"portable",
 				"zip"
 			],
-			"signAndEditExecutable": false,
+			"signExecutable": false,
 			"asarUnpack": [
 				"**/assets/*.svg",
 				"**/assets/*.png"
