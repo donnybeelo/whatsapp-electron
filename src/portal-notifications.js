@@ -67,14 +67,15 @@ export async function init(onActivate) {
 	}
 }
 
-export async function show({ tag, title, body, icon, silent }) {
+export async function show({ tag, title, body, icon, lowPriority }) {
 	if (!portal || !tag) return false;
 	const vardict = {
 		title: new Variant("s", title || ""),
 		body: new Variant("s", body || ""),
-		// ponytail: there is no silent flag; "low" is the closest thing and only
-		// the initial unread summary sets silent anyway
-		priority: new Variant("s", silent ? "low" : "normal"),
+		// "low" keeps the startup unread summary out of the banner queue. It must
+		// not be tied to the web silent flag: WhatsApp Web sets silent on every
+		// notification, and GNOME drops the banner for anything low.
+		priority: new Variant("s", lowPriority ? "low" : "normal"),
 		// The "app." prefix is load-bearing: GNOME's shell only namespaces action
 		// names it recognises and plain-activates the app for anything else.
 		"default-action": new Variant("s", "app.open-chat"),

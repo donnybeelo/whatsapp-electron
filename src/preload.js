@@ -350,6 +350,7 @@ class WhatsAppInstance {
 					),
 				tag: chat.id._serialized || chat.id,
 				silent: true,
+				lowPriority: true,
 			});
 		}
 	}

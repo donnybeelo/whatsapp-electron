@@ -266,7 +266,7 @@ class WhatsAppElectron {
 						title: data.title,
 						body: data.options.body,
 						icon: data.icon,
-						silent: data.options.silent,
+						lowPriority: data.options.lowPriority,
 					})
 					.then((sent) => {
 						if (!sent) return this.showLibnotify(data);
