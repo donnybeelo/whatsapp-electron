@@ -133,41 +133,44 @@ jobs:
           echo "GPG_KEY=$(gpg --list-secret-keys --with-colons \
             | awk -F: '/^fpr:/{print $10; exit}')" >> "$GITHUB_ENV"
 
-      - name: Import the bundle and re-sign the repo
-        run: |
-          flatpak build-import-bundle --gpg-sign="$GPG_KEY" \
-            releases dist/WhatsApp-*-x86_64.flatpak
-          flatpak build-update-repo releases \
-            --title="Daniel Elia's Flatpaks" \
-            --comment="Flatpak releases by Daniel Elia" \
-            --homepage="https://donnybeelo.net" \
-            --default-branch=stable \
-            --generate-static-deltas --prune \
-            --gpg-sign="$GPG_KEY"
-
-      # build-update-repo does not touch the site files, but a stray delete
-      # would silently unpublish the repo.
-      - name: Sanity-check the site files
-        run: |
-          cd releases
-          for f in CNAME .nojekyll index.html donnybeelo.flatpakrepo donnybeelo-key.asc; do
-            [ -e "$f" ] || { echo "::error::$f is missing"; exit 1; }
-          done
-          test -s summary && test -s summary.sig
-
       - name: Publish
         run: |
           cd releases
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Nothing changed; not committing."
-            exit 0
-          fi
-          git commit -m "WhatsApp ${GITHUB_REF_NAME#v}"
 
-          # Another app may have been published into this shared repo while we
-          # were building, so land on top of it rather than being rejected.
-          git pull --rebase --autostash origin main
-          git push
+          # Another app publishes into this same ostree repo, so the tree is
+          # assembled on top of whatever origin holds at push time: reset to
+          # origin, import the bundle, regenerate the summary, push, and on
+          # rejection start over from the new origin.
+          for try in 1 2 3; do
+            git fetch origin main
+            git reset --hard FETCH_HEAD
+            mkdir -p refs/heads refs/mirrors refs/remotes state extensions tmp/cache
+
+            flatpak build-import-bundle --gpg-sign="$GPG_KEY" \
+              . ../dist/WhatsApp-*-x86_64.flatpak
+            flatpak build-update-repo . \
+              --title="Daniel Elia's Flatpaks" \
+              --comment="Flatpak releases by Daniel Elia" \
+              --homepage="https://donnybeelo.net" \
+              --default-branch=stable \
+              --generate-static-deltas --prune \
+              --gpg-sign="$GPG_KEY"
+
+            # The site files must survive: build-update-repo does not touch
+            # them, but a stray delete would silently unpublish the repo.
+            for f in CNAME .nojekyll index.html donnybeelo.flatpakrepo donnybeelo-key.asc; do
+              [ -e "$f" ] || { echo "::error::$f is missing"; exit 1; }
+            done
+            test -s summary && test -s summary.sig
+
+            git add -A
+            if git diff --cached --quiet; then
+              echo "Nothing changed; not committing."
+              exit 0
+            fi
+            git commit -m "WhatsApp ${GITHUB_REF_NAME#v}"
+            git push origin HEAD:main && exit 0
+          done
+          echo "::error::origin kept moving; publish failed" && exit 1
