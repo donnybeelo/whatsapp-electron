@@ -194,6 +194,10 @@ class WhatsAppElectron {
 	}
 
 	init() {
+		this.tagFile = path.join(
+			app.getPath("userData"),
+			"notification-tags.json",
+		);
 		this.installSymbolicIcon();
 		this._initElectronApp();
 		this.handleProtocolUrl(process.argv);
@@ -239,7 +243,7 @@ class WhatsAppElectron {
 				for (const [tag, notification] of this.notifications.entries()) {
 					if (!data.unreadTags.includes(tag)) {
 						notification.close();
-						this.notifications.delete(tag);
+						this._untrack(tag);
 					}
 				}
 			}
@@ -272,7 +276,7 @@ class WhatsAppElectron {
 						if (!sent) return this.showLibnotify(data);
 						// stand-in so the close/sweep paths below stay portal-agnostic
 						if (data.options.tag) {
-							this.notifications.set(data.options.tag, {
+							this._track(data.options.tag, {
 								close: () => portal.close(data.options.tag),
 							});
 						}
@@ -287,7 +291,7 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.closeRendererNotification, (event, tag) => {
 			if (this.notifications.has(tag)) {
 				this.notifications.get(tag).close();
-				this.notifications.delete(tag);
+				this._untrack(tag);
 			}
 		});
 
@@ -315,6 +319,40 @@ class WhatsAppElectron {
 		});
 	}
 
+	// The shell keeps portal notifications after we exit, and RemoveNotification
+	// needs the id we used, so the live tags outlive the process on disk.
+	_track(tag, notification) {
+		this.notifications.set(tag, notification);
+		this._persistTags();
+	}
+
+	_untrack(tag) {
+		this.notifications.delete(tag);
+		this._persistTags();
+	}
+
+	_persistTags() {
+		try {
+			fs.writeFileSync(
+				this.tagFile,
+				JSON.stringify([...this.notifications.keys()]),
+			);
+		} catch (e) {
+			console.error("Failed to persist notification tags:", e);
+		}
+	}
+
+	purgeStaleNotifications() {
+		let tags = [];
+		try {
+			tags = JSON.parse(fs.readFileSync(this.tagFile, "utf8"));
+		} catch (e) {
+			return;
+		}
+		for (const tag of tags) portal.close(tag);
+		this._persistTags();
+	}
+
 	// Electron's libnotify path: the click only works while this process lives
 	showLibnotify(data) {
 		const n = new Notification({
@@ -325,9 +363,9 @@ class WhatsAppElectron {
 		});
 
 		if (data.options.tag) {
-			this.notifications.set(data.options.tag, n);
+			this._track(data.options.tag, n);
 			n.on("close", () => {
-				this.notifications.delete(data.options.tag);
+				this._untrack(data.options.tag);
 			});
 		}
 
@@ -712,12 +750,6 @@ class WhatsAppElectron {
 				this.window.show();
 				this.window.focus();
 			}
-
-			// Close initial unread summary notification when window is shown
-			if (this.notifications.has("initial-unread")) {
-				this.notifications.get("initial-unread").close();
-				this.notifications.delete("initial-unread");
-			}
 		} else {
 			if (hide) {
 				this.window.hide();
@@ -749,7 +781,10 @@ app.whenReady().then(async () => {
 	if (process.platform === "linux" && process.env.FLATPAK_ID) {
 		try {
 			const mod = await import("./portal-notifications.js");
-			if (await mod.init((tag) => ws.openChatFromPortal(tag))) portal = mod;
+			if (await mod.init((tag) => ws.openChatFromPortal(tag))) {
+				portal = mod;
+				ws.purgeStaleNotifications();
+			}
 		} catch (e) {
 			console.error("Failed to load notification portal:", e);
 		}
