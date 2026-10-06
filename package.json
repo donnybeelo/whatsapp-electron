@@ -4,7 +4,7 @@
 	"desktopName": "WhatsApp",
 	"version": "3.4.3",
 	"description": "An unofficial WhatsApp desktop client built with Electron.",
-	"author": "Daniel Elia <d.elia@outlook.com> (https://donnybeelo.github.io)",
+	"author": "Daniel Elia <d.elia@outlook.com> (https://donnybeelo.net)",
 	"email": "d.elia@outlook.com",
 	"license": "ISC",
 	"main": "./src/index.js",
