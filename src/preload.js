@@ -335,7 +335,7 @@ class WhatsAppInstance {
 			try {
 				const pic = await ProfilePicThumbCollection.find(chat.id);
 				// NotificationServer circles the icon and draws the border
-				icon = pic?.imgFull || pic?.img;
+				icon = pic?.eurl || pic?.imgFull || pic?.img;
 			} catch (e) {
 				// no picture set, or not synced yet
 			}
@@ -463,7 +463,7 @@ class NotificationServer {
 			const id = createWid(tag);
 			(await ProfilePicThumbCollection.find(id))?.markStale?.();
 			const pic = await ProfilePicThumbCollection.find(id);
-			return await this._getIcon(pic?.imgFull || pic?.img);
+			return await this._getIcon(pic?.eurl || pic?.imgFull || pic?.img);
 		} catch (e) {
 			return undefined;
 		}
