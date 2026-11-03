@@ -63,8 +63,8 @@
 		"appId": "net.donnybeelo.WhatsApp",
 		"npmRebuild": false,
 		"flatpak": {
-			"runtimeVersion": "24.08",
-			"baseVersion": "24.08",
+			"runtimeVersion": "26.08",
+			"baseVersion": "26.08",
 			"branch": "stable",
 			"files": [
 				[
