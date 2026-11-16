@@ -214,6 +214,11 @@ class WhatsAppElectron {
 			app.getPath("userData"),
 			"notification-tags.json",
 		);
+		this.themeFile = path.join(app.getPath("userData"), "theme-preference");
+		try {
+			this.themePreference = fs.readFileSync(this.themeFile, "utf8").trim();
+		} catch (e) {}
+		this.applyTheme();
 		this.installSymbolicIcon();
 		this._initElectronApp();
 		this.handleProtocolUrl(process.argv);
@@ -337,6 +342,11 @@ class WhatsAppElectron {
 		ipcMain.on(Constants.event.themePreference, (_event, preference) => {
 			this.themePreference = preference;
 			this.applyTheme();
+			try {
+				fs.writeFileSync(this.themeFile, preference);
+			} catch (e) {
+				console.error("Failed to save theme preference:", e);
+			}
 		});
 		if (process.platform === "linux") {
 			this.watchSystemTheme().catch((e) =>
@@ -416,10 +426,9 @@ class WhatsAppElectron {
 	}
 
 	applyTheme() {
-		nativeTheme.themeSource =
-			this.themePreference && this.themePreference !== "system"
-				? this.themePreference
-				: (this.systemTheme ?? "system");
+		nativeTheme.themeSource = ["light", "dark"].includes(this.themePreference)
+			? this.themePreference
+			: (this.systemTheme ?? "system");
 	}
 
 	async watchSystemTheme() {
