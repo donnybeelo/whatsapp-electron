@@ -4,6 +4,7 @@ import {
 	desktopCapturer,
 	ipcMain,
 	Menu,
+	nativeTheme,
 	Tray,
 	nativeImage,
 	Notification,
@@ -11,6 +12,7 @@ import {
 	screen,
 	clipboard,
 } from "electron";
+import dbus from "dbus-next";
 import fs from "node:fs";
 import https from "node:https";
 import path from "node:path";
@@ -108,8 +110,22 @@ class WhatsAppElectron {
 	handleProtocolUrl(argv) {
 		const urlArg = argv.find((arg) => arg.startsWith("whatsapp://"));
 		if (urlArg) {
-			const newUrl = urlArg.replace("whatsapp://", Constants.whatsapp.url);
-			if (this.window && this.window.webContents) {
+			const url = urlArg.replace("whatsapp://", Constants.whatsapp.url);
+			const newUrl = `${url}${url.includes("?") ? "&" : "?"}${Constants.whatsapp.windowsQuery}`;
+			const live =
+				this.rendererReady &&
+				this.window?.webContents
+					.getURL()
+					.startsWith(Constants.whatsapp.url);
+			if (live) {
+				this.window.webContents.send(
+					Constants.event.bridgeEvent,
+					"AppActivationBridge",
+					"handleAppActivationViaProtocolEvent",
+					urlArg,
+				);
+				this.showHide(false);
+			} else if (this.window && this.window.webContents) {
 				this.window.loadURL(newUrl);
 				if (this.window.isMinimized()) this.window.restore();
 				this.window.focus();
@@ -133,7 +149,7 @@ class WhatsAppElectron {
 					clearInterval(this._pollInterval);
 					this._pollInterval = null;
 				}
-				this.window.loadURL(Constants.whatsapp.url);
+				this.window.loadURL(Constants.whatsapp.appUrl);
 			} else {
 				this.window.loadFile(path.join(__dirname, "offline.html"));
 				this.establishRefreshInterval();
@@ -149,7 +165,7 @@ class WhatsAppElectron {
 				const isOffline = currentURL.endsWith("offline.html");
 				if (isOnline && isOffline) {
 					// If online and currently showing offline.html, restore WhatsApp
-					this.window.loadURL(Constants.whatsapp.url);
+					this.window.loadURL(Constants.whatsapp.appUrl);
 					clearInterval(this._pollInterval);
 					return;
 				} else if (!isOnline && !isOffline) {
@@ -236,12 +252,13 @@ class WhatsAppElectron {
 		//Events
 		// Relay unread badge updates from renderer
 		ipcMain.on(Constants.event.updateUnreadMessages, (event, data) => {
-			this.updateTrayBadgeCounter(data.unread);
+			if (data.unread !== undefined) this.updateTrayBadgeCounter(data.unread);
 
 			if (data.unreadTags) {
-				// Close notifications for tags that are no longer unread
+				// Close chat-tagged notifications that are no longer unread
 				for (const [tag, notification] of this.notifications.entries()) {
-					if (!data.unreadTags.includes(tag)) {
+					const messageKey = new RegExp(Constants.whatsapp.messageKeyPattern);
+				if (!messageKey.test(tag) && !data.unreadTags.includes(tag)) {
 						notification.close();
 						this._untrack(tag);
 					}
@@ -302,20 +319,124 @@ class WhatsAppElectron {
 			});
 		});
 
-		ipcMain.on(Constants.event.minimizeWindow, () => {
-			this.window.minimize();
+		ipcMain.on(Constants.event.titleBarColours, (_event, colours) => {
+			if (!this.isHyprland) this.window.setTitleBarOverlay(colours);
 		});
 
-		ipcMain.on(Constants.event.maximizeWindow, () => {
-			if (this.window.isMaximized()) {
-				this.window.unmaximize();
-			} else {
-				this.window.maximize();
+		ipcMain.on(Constants.event.minimizeToTray, (_event, enabled) => {
+			this.minimizeToTray = enabled;
+		});
+		ipcMain.handle(Constants.event.getStartAtLogin, () =>
+			this.getStartAtLogin() ? "Enabled" : "Disabled",
+		);
+		ipcMain.on(Constants.event.setStartAtLogin, (_event, enabled) =>
+			this.setStartAtLogin(enabled),
+		);
+		ipcMain.on(Constants.event.showWindow, () => this.showHide(false));
+
+		ipcMain.on(Constants.event.themePreference, (_event, preference) => {
+			this.themePreference = preference;
+			this.applyTheme();
+		});
+		if (process.platform === "linux") {
+			this.watchSystemTheme().catch((e) =>
+				console.error("Failed to read colour scheme:", e),
+			);
+		}
+	}
+
+	get sessionBus() {
+		this._sessionBus ??= dbus.sessionBus();
+		return this._sessionBus;
+	}
+
+	get autostartFile() {
+		return path.join(
+			app.getPath("home"),
+			".config/autostart",
+			`${process.env.FLATPAK_ID || "net.donnybeelo.WhatsApp"}.desktop`,
+		);
+	}
+
+	getStartAtLogin() {
+		if (process.platform !== "linux")
+			return app.getLoginItemSettings({ args: ["--background"] }).openAtLogin;
+		return fs.existsSync(this.autostartFile);
+	}
+
+	async hasTrayHost() {
+		try {
+			const bus = await this.sessionBus.getProxyObject(
+				"org.freedesktop.DBus",
+				"/org/freedesktop/DBus",
+			);
+			return await bus
+				.getInterface("org.freedesktop.DBus")
+				.NameHasOwner("org.kde.StatusNotifierWatcher");
+		} catch (e) {
+			return false;
+		}
+	}
+
+	async setStartAtLogin(enabled) {
+		if (process.platform !== "linux") {
+			app.setLoginItemSettings({ openAtLogin: enabled, args: ["--background"] });
+			return;
+		}
+		try {
+			if (!enabled) {
+				fs.rmSync(this.autostartFile, { force: true });
+				return;
 			}
-		});
+			const command = process.env.FLATPAK_ID
+				? `flatpak run ${process.env.FLATPAK_ID}`
+				: process.env.APPIMAGE
+					? `'${process.env.APPIMAGE}'`
+					: `'${process.execPath}'${process.defaultApp ? ` '${path.resolve(process.argv[1])}'` : ""}`;
+			// Waits for the tray host before launching, when the session has one
+			const exec = (await this.hasTrayHost())
+				? `sh -c "gdbus wait --session --timeout 60 org.kde.StatusNotifierWatcher; exec ${command} --background"`
+				: `sh -c "exec ${command} --background"`;
+			fs.mkdirSync(path.dirname(this.autostartFile), { recursive: true });
+			fs.writeFileSync(
+				this.autostartFile,
+				[
+					"[Desktop Entry]",
+					"Type=Application",
+					`Name=${Constants.appName}`,
+					`Icon=${process.env.FLATPAK_ID || "whatsapp"}`,
+					`Exec=${exec}`,
+					"X-GNOME-Autostart-enabled=true",
+					"",
+				].join("\n"),
+			);
+		} catch (e) {
+			console.error("Failed to update autostart entry:", e);
+		}
+	}
 
-		ipcMain.on(Constants.event.closeWindow, () => {
-			this.window.close();
+	applyTheme() {
+		nativeTheme.themeSource =
+			this.themePreference && this.themePreference !== "system"
+				? this.themePreference
+				: (this.systemTheme ?? "system");
+	}
+
+	async watchSystemTheme() {
+		const NAMESPACE = "org.freedesktop.appearance";
+		const KEY = "color-scheme";
+		const apply = (value) => {
+			this.systemTheme = value === 1 ? "dark" : "light";
+			this.applyTheme();
+		};
+		const desktop = await this.sessionBus.getProxyObject(
+			"org.freedesktop.portal.Desktop",
+			"/org/freedesktop/portal/desktop",
+		);
+		const settings = desktop.getInterface("org.freedesktop.portal.Settings");
+		apply((await settings.ReadOne(NAMESPACE, KEY)).value);
+		settings.on("SettingChanged", (namespace, key, value) => {
+			if (namespace === NAMESPACE && key === KEY) apply(value.value);
 		});
 	}
 
@@ -414,8 +535,10 @@ class WhatsAppElectron {
 			minWidth: 750,
 			minHeight: 550,
 			icon: this.baseIcon,
-			frame: false,
+			frame: !this.isHyprland,
 			thickFrame: true,
+			titleBarStyle: this.isHyprland ? "default" : "hidden",
+			titleBarOverlay: !this.isHyprland,
 			autoHideMenuBar: true,
 			show: !startInBackground,
 			webPreferences: {
@@ -574,6 +697,8 @@ class WhatsAppElectron {
 						// hidden, and a transient child can't be maximised on Wayland
 						show: true,
 						frame: true,
+						titleBarStyle: "default",
+						titleBarOverlay: false,
 						maximizable: true,
 						fullscreenable: true,
 						width: 400,
@@ -604,16 +729,7 @@ class WhatsAppElectron {
 			constants: Constants,
 		});
 
-		// Relay maximize/minimize/close events to renderer for CSS
-		this.window.on("maximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: true,
-			});
-		});
 		this.window.on("unmaximize", () => {
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: false,
-			});
 			if (process.platform === "linux" && !this.isHyprland) {
 				// Fallback to window state dimensions if unmaximize fails to restore size
 				// Wrapped in setTimeout to prevent infinite recursion (RangeError)
@@ -629,31 +745,12 @@ class WhatsAppElectron {
 			}
 		});
 
-		// Relay focus state to renderer for window controls styling
-		this.window.on("focus", () => {
-			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
-				isFocused: true,
-			});
-		});
-		this.window.on("blur", () => {
-			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
-				isFocused: false,
-			});
-		});
-
 		// Send constants/init to renderer after load
 		this.window.webContents.on("did-finish-load", () => {
 			this.window.webContents.send(Constants.event.initWhatsAppInstance, {
 				id: "main",
 				name: "WhatsApp",
 				constants: Constants,
-				isHyprland: this.isHyprland,
-			});
-			this.window.webContents.send(Constants.event.windowMaximizeStateChanged, {
-				isMaximized: this.window.isMaximized(),
-			});
-			this.window.webContents.send(Constants.event.windowFocusStateChanged, {
-				isFocused: this.window.isFocused(),
 			});
 
 			// IPC is ordered, so anything sent after initWhatsAppInstance lands
@@ -677,7 +774,7 @@ class WhatsAppElectron {
 					clearInterval(this._pollInterval);
 					this._pollInterval = null;
 				}
-				const urlToLoad = this.startUrl || Constants.whatsapp.url;
+				const urlToLoad = this.startUrl || Constants.whatsapp.appUrl;
 				this.window.loadURL(urlToLoad);
 				this.startUrl = null;
 			}
@@ -686,7 +783,8 @@ class WhatsAppElectron {
 		if (!startInBackground) this.window.show();
 
 		this.window.on("close", (e) => {
-			if (this.isQuit) {
+			if (this.isQuit || this.minimizeToTray === false) {
+				this.isQuit = true;
 				app.quit();
 				return;
 			}
@@ -794,6 +892,11 @@ app.whenReady().then(async () => {
 app.on("second-instance", (event, argv) => {
 	ws.showHide(false);
 	ws.handleProtocolUrl(argv);
+});
+
+// Marks every quit path (SIGTERM, logout, app.quit) as a real quit
+app.on("before-quit", () => {
+	ws.isQuit = true;
 });
 
 app.on("window-all-closed", () => {

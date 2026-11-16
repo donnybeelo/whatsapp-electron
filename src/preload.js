@@ -11,33 +11,182 @@ const whatsappReady = new Promise((resolve) => {
 	whatsappLoaded = resolve;
 });
 
-let windowIsFocused = true;
+let constantsLoaded;
+const constantsReady = new Promise((resolve) => {
+	constantsLoaded = resolve;
+});
+const sendWhenReady = (event, ...args) =>
+	constantsReady.then(() => ipcRenderer.send(Constants.event[event], ...args));
 
-const applyWindowControlsFocusFilter = () => {
-	const controls = document.getElementById("electron-window-controls");
-	if (!controls) return;
-
-	const filter = windowIsFocused ? "" : "opacity(0.5)";
-	controls.querySelectorAll(":scope svg").forEach((button) => {
-		button.style.filter = filter;
-	});
-	const closeButton = controls.firstElementChild;
-	if (closeButton) {
-		closeButton.style.backdropFilter = windowIsFocused
-			? "brightness(0) saturate(100%) invert(10%) sepia(100%) saturate(7476%) hue-rotate(3deg) brightness(101%) contrast(109%) opacity(0.4)"
-			: "";
+// Bridge events the page subscribed to, keyed "HostObject.event"; events with
+// no listener yet are held until one subscribes
+const bridgeListeners = new Map();
+const pendingBridgeEvents = new Map();
+const emitBridgeEvent = (object, event, payload) => {
+	const key = `${object}.${event}`;
+	const listeners = bridgeListeners.get(key);
+	if (!listeners?.size) {
+		pendingBridgeEvents.set(key, [...(pendingBridgeEvents.get(key) ?? []), payload]);
+		return;
 	}
+	for (const listener of listeners) listener(payload);
 };
 
-// Clear hover backgrounds for window controls (used in multiple places)
-const clearWindowControlsHover = () => {
-	document
-		.querySelectorAll(".electron-window-controls-button")
-		.forEach((el) => {
-			try {
-				el.style.background = "";
-			} catch (e) {}
+// Stand-in for the Windows app's WebView2 host objects: every bridge call
+// resolves with nothing, except the ones below.
+if (!window.chrome?.webview) {
+	const store = {};
+	const special = {
+		"ClientKeyBridge.setClientKey": (key) => {
+			store.clientKey = key;
+		},
+		"ClientKeyBridge.getClientKey": () => store.clientKey ?? "",
+		"ClientKeyBridge.clearClientKey": () => {
+			delete store.clientKey;
+		},
+		"ServerEncKeySaltBridge.setServerEncKeySalt": (salt) => {
+			store.salt = salt;
+		},
+		"ServerEncKeySaltBridge.getServerEncKeySalt": () => store.salt ?? null,
+		"SystemIntegrationsBridge.showMessageNotification": (
+			key,
+			_tag,
+			title,
+			body,
+			icon,
+			...rest
+		) => {
+			const suppressBanner = rest[5];
+			if (!suppressBanner)
+				constantsReady.then(
+					() =>
+						new NotificationServer(title, {
+							body,
+							icon,
+							tag: key,
+							silent: false,
+						}),
+				);
+		},
+		"SystemIntegrationsBridge.closeMessageNotification": (key) =>
+			sendWhenReady("closeRendererNotification", key),
+		"SystemIntegrationsBridge.closeMessageNotifications": (keys) => {
+			for (const key of keys) sendWhenReady("closeRendererNotification", key);
+		},
+		"SystemIntegrationsBridge.isNotificationEnabledInSystem": () => true,
+		"SystemIntegrationsBridge.updateTaskbarBadge": (count) =>
+			sendWhenReady("updateUnreadMessages", { unread: Number(count) || 0 }),
+		"SystemIntegrationsBridge.getStartupTaskState": () =>
+			constantsReady.then(() =>
+				ipcRenderer.invoke(Constants.event.getStartAtLogin),
+			),
+		"SystemIntegrationsBridge.updateStartupTask": (enabled) =>
+			sendWhenReady("setStartAtLogin", !!enabled),
+		"NativeAppStateBridge.bringMainWindowToForeground": () =>
+			sendWhenReady("showWindow"),
+	};
+	const hostObject = (path, sync) =>
+		new Proxy(function () {}, {
+			get(_target, prop) {
+				if (prop === "then" || typeof prop === "symbol") return undefined;
+				if (prop === "addEventListener" || prop === "removeEventListener") {
+					const object = path.replace(/^sync\./, "").split(".")[0];
+					return (event, listener) => {
+						const key = `${object}.${event}`;
+						if (!bridgeListeners.has(key)) bridgeListeners.set(key, new Set());
+						if (prop === "removeEventListener") {
+							bridgeListeners.get(key).delete(listener);
+							return;
+						}
+						bridgeListeners.get(key).add(listener);
+						const pending = pendingBridgeEvents.get(key) ?? [];
+						pendingBridgeEvents.delete(key);
+						for (const payload of pending) listener(payload);
+					};
+				}
+				return hostObject(`${path}.${prop}`, sync);
+			},
+			apply(_target, _this, args) {
+				const value = special[path.split(".").slice(-2).join(".")]?.(...args);
+				return sync ? value : Promise.resolve(value);
+			},
 		});
+	const hostObjects = new Proxy(
+		{ options: {} },
+		{
+			get(target, prop) {
+				if (prop === "options") return target.options;
+				if (prop === "then" || typeof prop === "symbol") return undefined;
+				if (prop === "sync") return hostObject("sync", true);
+				return hostObject(prop, false);
+			},
+		},
+	);
+	window.chrome = window.chrome || {};
+	window.chrome.webview = {
+		hostObjects,
+		postMessage() {},
+		addEventListener() {},
+		removeEventListener() {},
+	};
+}
+
+const TOP_BAR =
+	'[data-testid="wa-web-main-screen"] > div:has(> [data-testid="wa-logo"])';
+
+const syncTitleBar = () => {
+	if (!document.getElementById("whatsapp-title-bar-style")) {
+		const style = document.createElement("style");
+		style.id = "whatsapp-title-bar-style";
+		style.textContent = `${TOP_BAR} { -webkit-app-region: drag; }`;
+		document.documentElement.append(style);
+	}
+	let last = "";
+	let lastTheme = "";
+	let lastTray;
+	setInterval(() => {
+		try {
+			const prefs = self.require("WAWebUserPrefsGeneral");
+			const theme = prefs.getSystemThemeMode() ? "system" : prefs.getTheme();
+			if (theme && theme !== lastTheme) {
+				lastTheme = theme;
+				ipcRenderer.send(Constants.event.themePreference, theme);
+			}
+			const tray = self
+				.require("WAWebWindowsUserPrefsSystemTray")
+				.IsSystemTrayEnabled();
+			if (tray !== lastTray) {
+				lastTray = tray;
+				ipcRenderer.send(Constants.event.minimizeToTray, tray);
+			}
+		} catch (e) {}
+
+		const bar = document.querySelector(TOP_BAR);
+		if (!bar) return;
+		const { backgroundColor, color } = getComputedStyle(bar);
+		const height = Math.round(bar.getBoundingClientRect().height);
+		const key = `${backgroundColor}|${color}|${height}`;
+		if (key === last) return;
+		last = key;
+		ipcRenderer.send(Constants.event.titleBarColours, {
+			color: backgroundColor,
+			symbolColor: color,
+			height,
+		});
+	}, 1000);
+};
+
+// Replaces a web-mode service worker with a windows-mode one, once per session
+const resetWebServiceWorker = async () => {
+	if (location.hostname !== "web.whatsapp.com") return;
+	const regs = (await navigator.serviceWorker?.getRegistrations()) ?? [];
+	const webMode = regs.some(
+		(r) => r.active && !r.active.scriptURL.includes("windows=1"),
+	);
+	if (!webMode || sessionStorage.getItem("whatsapp-sw-reset")) return;
+	sessionStorage.setItem("whatsapp-sw-reset", "1");
+	await Promise.all(regs.map((r) => r.unregister()));
+	location.replace(Constants.whatsapp.appUrl);
 };
 
 // Paths lifted verbatim from WhatsApp Web's WAWebDefaultGroupIcon.react /
@@ -142,7 +291,15 @@ class WhatsAppInstance {
 		ipcRenderer.on(Constants.event.fireNotificationClick, (event, tag) => {
 			//console.log("Received Notification Click from Main...", tag);
 			// On a cold D-Bus activation the click lands long before the SPA is up
-			whatsappReady.then(() => this.openChat(tag));
+			whatsappReady.then(() =>
+				new RegExp(Constants.whatsapp.messageKeyPattern).test(String(tag))
+					? emitBridgeEvent(
+							"SystemIntegrationsBridge",
+							"MessageNotificationActionEvent",
+							{ action: "Click", tag, additionalData: "" },
+						)
+					: this.openChat(tag),
+			);
 		});
 
 		ipcRenderer.on(Constants.event.buildBadgeIcon, (event, data) => {
@@ -356,60 +513,34 @@ class WhatsAppInstance {
 	}
 
 	countUnread() {
-		let unread = 0;
-		let chats = 0;
-		let unreadTags = [];
-		// ponytail: selector does the aria-label filter natively, and textContent
-		// avoids the forced reflow innerText caused on every badge.
-		for (const item of document.querySelectorAll("span[aria-label]")) {
-			const label = item.getAttribute("aria-label");
-			if (
-				label !== Constants.whatsapp.unreadText &&
-				label.search(Constants.whatsapp.unreadTextSearch) == -1
-			)
-				continue;
-			const count = parseInt(item.textContent);
-			if (!isNaN(count)) {
-				unread += count;
-				chats += 1;
+		if (!this.mrobj || Object.keys(this.mrobj).length === 0) return;
+		let unreadTags;
+		try {
+			// ponytail: findModule() is a linear scan over every webpack module in
+			// WhatsApp Web, so cache the hit instead of redoing it on every count.
+			if (!this.chatModule)
+				this.chatModule = this.findModule((m) => m.default && m.default.Chat)[0];
+			if (!this.chatModule) return;
+			const unreadChats = this.chatModule.default.Chat.getModelsArray().filter(
+				(c) => c.unreadCount > 0,
+			);
+			unreadTags = unreadChats.map((c) => c.id._serialized || c.id);
+
+			if (!this.initialNotificationsFired && unreadTags.length > 0) {
+				this.fireInitialUnreadNotifications(unreadChats);
+				this.initialNotificationsFired = true;
 			}
+		} catch (e) {
+			return;
 		}
 
-		if (this.mrobj && Object.keys(this.mrobj).length > 0) {
-			try {
-				// ponytail: findModule() is a linear scan over every webpack module in
-				// WhatsApp Web, so cache the hit instead of redoing it on every count.
-				if (!this.chatModule)
-					this.chatModule = this.findModule((m) => m.default && m.default.Chat)[0];
-				const ChatModule = this.chatModule;
-				if (ChatModule) {
-					const chats = ChatModule.default.Chat.getModelsArray();
-					unreadTags = chats
-						.filter((c) => c.unreadCount > 0)
-						.map((c) => c.id._serialized || c.id);
-
-					if (!this.initialNotificationsFired && unreadTags.length > 0) {
-						this.fireInitialUnreadNotifications(
-							chats.filter((c) => c.unreadCount > 0),
-						);
-						this.initialNotificationsFired = true;
-					}
-				}
-			} catch (e) {
-				// console.error("Error getting unread tags:", e);
-			}
-		}
-
-		if (this.lastUnread != unread) {
-			this.lastUnread = unread;
-			chats = chats > 0 ? chats - 1 : chats;
-
-			ipcRenderer.send(Constants.event.updateUnreadMessages, {
-				id: this.id,
-				unread: unread - chats,
-				unreadTags: unreadTags,
-			});
-		}
+		const key = unreadTags.join(",");
+		if (this.lastUnread === key) return;
+		this.lastUnread = key;
+		ipcRenderer.send(Constants.event.updateUnreadMessages, {
+			id: this.id,
+			unreadTags,
+		});
 	}
 }
 
@@ -600,15 +731,18 @@ let wa = null;
 window.oldNotification = Notification;
 window.Notification = NotificationServer;
 console.log("Window Notifications Object Replaced by NotificationServer...");
-const maximizeButtonSVG =
-	'<path fill="currentColor" d="M19 5v14H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>';
-const restoreButtonSVG =
-	'<path fill="currentColor" d="M16.608 7.392v12.215H4.392V7.392h12.215m0-1.745H4.392c-.964 0-1.745.781-1.745 1.745v12.215c0 .463.184.907.511 1.234s.771.511 1.234.511h12.215c.463 0 .907-.184 1.234-.511s.511-.771.511-1.234V7.392c0-.463-.184-.907-.511-1.234s-.771-.511-1.234-.511zM5.647 4.392h13.961v13.961h.091c.913 0 1.654-.741 1.654-1.654V4.392c0-.964-.781-1.745-1.745-1.745h0H7.155a1.51 1.51 0 0 0-1.508 1.508z"/>';
 ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 	console.log(`BrowserView ID: ${data.id} / Name: ${data.name}`);
 	console.log("Received constants:", data.constants);
 	Constants = data.constants;
 	console.log("Constants set:", Constants);
+	constantsLoaded();
+
+	syncTitleBar();
+	resetWebServiceWorker();
+	ipcRenderer.on(Constants.event.bridgeEvent, (_event, object, name, payload) =>
+		emitBridgeEvent(object, name, payload),
+	);
 
 	// Check if WhatsApp is showing the browser-outdated screen.
 	// The exact DOM varies between builds, so inspect the visible page text
@@ -649,220 +783,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		wa = new WhatsAppInstance(data.id, data.name);
 		window.wa = wa;
 
-		const isHyprland = data.isHyprland;
-		let isMaximized = false;
-
-		const styles = `
-				/* Make all headers draggable */
-				header[tabindex="0"] {
-					-webkit-app-region: drag !important;
-					z-index: 600 !important;
-				}
-
-				.overlay,
-				[data-animate-modal-backdrop="true"],
-				[data-testid="media-viewer-modal"] {
-					width: calc(100% - 65px) !important;
-					left: 65px !important;
-				}
-
-				[aria-label="Media list"] {
-					height: calc(100% - 20px);
-					overflow-y: hidden;
-				}
-
-					/* ponytail: scoped to header -- unscoped [role="button"] matched every
-					   interactive element in the message list, and each no-drag rect gets
-					   recomputed as you scroll. Drag regions only exist in the header. */
-					header button, header [role="button"] {
-						-webkit-app-region: no-drag !important;
-					}
-
-				.electron-window-controls-button {
-					transition: background 100ms, scale 100ms, opacity 150ms;
-				}
-
-				.electron-window-controls-button:active {
-					scale: 0.9;
-					background: var(--WDS-components-active-list-row);
-				}
-
-				#electron-window-controls {
-					cursor: default;
-					margin-bottom: 8px;
-					margin-top: 4px;
-					gap: 6px;
-					display:flex;
-					flex-direction:column;
-					-webkit-app-region: no-drag;
-					align-items: center;
-					justify-content: center;
-					width: 40px;
-				}
-			`;
-
-		const style = document.createElement("style");
-		style.id = "whatsapp-electron-style";
-		style.textContent = styles;
-		document.head.appendChild(style);
-
-		window.ipcRenderer = require("electron").ipcRenderer;
-
-		// Swap the maximize button icon to match the window state
-		ipcRenderer.on(
-			Constants.event.windowMaximizeStateChanged,
-			(_event, data) => {
-				isMaximized = data.isMaximized;
-				const svg = document.querySelector(".maximize-button svg");
-				if (svg) {
-					svg.innerHTML = isMaximized ? restoreButtonSVG : maximizeButtonSVG;
-				}
-			},
-		);
-
-		// Listen for focus state changes from main process
-		ipcRenderer.on(Constants.event.windowFocusStateChanged, (_event, data) => {
-			windowIsFocused = !!data?.isFocused;
-			applyWindowControlsFocusFilter();
-			// If window regained focus (restored/unminimized), clear any lingering hover styles
-			if (windowIsFocused) {
-				try {
-					clearWindowControlsHover();
-				} catch (e) {}
-			}
-		});
-
-		// Function to add window control buttons (can be called multiple times)
-		const addWindowControls = () => {
-			if (isHyprland) return;
-
-			const chatElement = document.querySelector('[aria-label="Chats"]');
-			const sidebarHeader =
-				chatElement?.parentElement?.parentElement?.parentElement?.parentElement;
-
-			// Check if buttons already exist
-			if (
-				sidebarHeader &&
-				!document.getElementById("electron-window-controls")
-			) {
-				const buttonClass = "electron-window-controls-button";
-				const buttonStyle =
-					"width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;";
-				const buttonContainer = document.createElement("div");
-				buttonContainer.id = "electron-window-controls";
-
-				let lastClicked = "";
-				const closeButton = document.createElement("div");
-				closeButton.className = buttonClass;
-				closeButton.style.cssText = buttonStyle;
-				const closeButtonSVG =
-					'<path fill="currentColor" d="M19.7 4.3a1 1 0 0 0-1.4 0L12 10.6 5.7 4.3a1 1 0 1 0-1.4 1.4l6.3 6.3-6.3 6.3a1 1 0 1 0 1.4 1.4l6.3-6.3 6.3 6.3a1 1 0 0 0 1.4-1.4l-6.3-6.3 6.3-6.3a1 1 0 0 0 0-1.4z"></path>';
-				closeButton.innerHTML = generateButtonHTML("Close", closeButtonSVG);
-				const actualCloseButton = closeButton.querySelector("button");
-				actualCloseButton.addEventListener("mousedown", () => {
-					lastClicked = "close";
-				});
-				actualCloseButton.addEventListener("mouseup", () => {
-					closeButton.style.background = "";
-				});
-				actualCloseButton.addEventListener("mouseleave", () => {
-					closeButton.style.background = "";
-				});
-				actualCloseButton.addEventListener("mouseenter", () => {
-					closeButton.style.background =
-						"var(--WDS-components-active-list-row)";
-				});
-				actualCloseButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.closeWindow);
-				});
-				buttonContainer.appendChild(closeButton);
-
-				const maximizeButton = document.createElement("div");
-				maximizeButton.className = buttonClass + " maximize-button";
-				maximizeButton.style.cssText = buttonStyle;
-				maximizeButton.innerHTML = generateButtonHTML(
-					"Maximize",
-					isMaximized ? restoreButtonSVG : maximizeButtonSVG,
-				);
-				const actualMaximizeButton = maximizeButton.querySelector("button");
-				actualMaximizeButton.addEventListener("mousedown", () => {
-					lastClicked = "maximize";
-				});
-				actualMaximizeButton.addEventListener("mouseup", () => {
-					maximizeButton.style.background = "";
-				});
-				actualMaximizeButton.addEventListener("mouseleave", () => {
-					maximizeButton.style.background = "";
-				});
-				actualMaximizeButton.addEventListener("mouseenter", () => {
-					maximizeButton.style.background =
-						"var(--WDS-components-active-list-row)";
-				});
-				actualMaximizeButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.maximizeWindow);
-				});
-				buttonContainer.appendChild(maximizeButton);
-
-				const minimizeButton = document.createElement("div");
-				minimizeButton.className = buttonClass;
-				minimizeButton.style.cssText = buttonStyle;
-				const minimizeButtonSVG =
-					'<path fill="currentColor" d="M19 13H5v-2h14v2z"></path>';
-				minimizeButton.innerHTML = generateButtonHTML(
-					"Minimize",
-					minimizeButtonSVG,
-				);
-				const actualMinimizeButton = minimizeButton.querySelector("button");
-				actualMinimizeButton.addEventListener("mousedown", () => {
-					minimizeButton.style.background = "";
-					lastClicked = "minimize";
-				});
-				actualMinimizeButton.addEventListener("mouseup", () => {
-					minimizeButton.style.background = "";
-				});
-				actualMinimizeButton.addEventListener("mouseleave", () => {
-					minimizeButton.style.background = "";
-				});
-				actualMinimizeButton.addEventListener("mouseenter", () => {
-					minimizeButton.style.background =
-						"var(--WDS-components-active-list-row)";
-				});
-				actualMinimizeButton.addEventListener("click", () => {
-					window.ipcRenderer.send(Constants.event.minimizeWindow);
-				});
-				buttonContainer.appendChild(minimizeButton);
-
-				sidebarHeader.insertBefore(buttonContainer, sidebarHeader.firstChild);
-				console.log("Window control buttons added");
-			}
-
-			// Clear hover backgrounds for window controls (fix persistent hover after minimize)
-			const clearWindowControlsHover = () => {
-				document
-					.querySelectorAll(".electron-window-controls-button")
-					.forEach((el) => {
-						try {
-							el.style.background = "";
-						} catch (e) {}
-					});
-			};
-
-			// When the document becomes visible again (unminimized/restored), clear any hover styles
-			document.addEventListener("visibilitychange", () => {
-				if (document.visibilityState === "visible") {
-					clearWindowControlsHover();
-				}
-			});
-
-			applyWindowControlsFocusFilter();
-		};
-
-		// Periodically check if window controls need to be added
-		if (!isHyprland)
-			setInterval(() => {
-				addWindowControls();
-			}, 2000);
-
 		// Flag to prevent double initialization
 		let uiInitialized = false;
 
@@ -875,56 +795,6 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 			uiInitialized = true;
 			console.log("WhatsApp loaded, initializing UI...");
 			whatsappLoaded();
-
-			// Add mutation observer to ensure the sidebar doesn't overlap with the window controls
-			const SIDEBAR_WIDTH = 72;
-			const nudge = (el) => {
-				const style = el.style;
-				if (!style?.left || !style.bottom) return;
-				if (parseFloat(style.left) < SIDEBAR_WIDTH)
-					style.left = `${SIDEBAR_WIDTH}px`;
-			};
-
-			// ponytail: watch each floating popup individually -- a subtree style observer
-			// on body fires for every virtualised message row WhatsApp repositions while
-			// scrolling. Popups are the only nodes mounted with inline left+bottom, so
-			// that pair is the filter; message rows use transform/top and are skipped.
-			const isFloating = (el) => el.style?.left && el.style.bottom;
-			const styleObserver = new MutationObserver((mutations) => {
-				for (const { target } of mutations) nudge(target);
-			});
-			const watch = (el) => {
-				nudge(el);
-				styleObserver.observe(el, {
-					attributes: true,
-					attributeFilter: ["style"],
-				});
-			};
-
-			new MutationObserver((mutations) => {
-				for (const { addedNodes } of mutations) {
-					for (const node of addedNodes) {
-						if (node.nodeType === Node.ELEMENT_NODE && isFloating(node)) {
-							watch(node);
-						}
-					}
-				}
-			}).observe(document.body, { childList: true, subtree: true });
-
-			// the call box may already be mounted by the time the UI initialises
-			document.querySelectorAll("div[style*='bottom']").forEach((el) => {
-				if (isFloating(el)) watch(el);
-			});
-			for (const child of document.body.children) {
-				nudge(child);
-				styleObserver.observe(child, {
-					attributes: true,
-					attributeFilter: ["style"],
-				});
-			}
-
-			// Add window control buttons initially
-			addWindowControls();
 		};
 
 		// Wait for WhatsApp to load by detecting when the sidebar header appears
@@ -970,14 +840,3 @@ ipcRenderer.on("init-whatsapp-instance", (event, data) => {
 		setTimeout(waitForWhatsApp, 500);
 	}
 });
-
-function generateButtonHTML(name, svg) {
-	return `<span class="html-span" style="width: 100%; height: 100%">
-<button aria-label="${name}" tabindex="-1" data-navbar-item="true" style="display: flex; align-items: center; justify-content: center; color: var(--WDS-content-deemphasized); width: 100%; height: 100%;">
-<svg viewBox="0 0 24 24" height="16" width="16" preserveAspectRatio="xMidYMid meet" style="display: block;" fill="none">
-<title>${name}</title>
-${svg}
-</svg>
-</button>
-</span>`;
-}

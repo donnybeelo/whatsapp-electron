@@ -9,6 +9,11 @@ const Constants = {
 Constants.version = pkg.version;
 
 Constants.whatsapp.url = "https://web.whatsapp.com/";
+Constants.whatsapp.windowsQuery =
+	"windows=1&windowsBuild=264600&windowsBuildType=RELEASE";
+Constants.whatsapp.appUrl = `${Constants.whatsapp.url}?${Constants.whatsapp.windowsQuery}`;
+// Windows-mode notification tags that are message keys, not chat jids
+Constants.whatsapp.messageKeyPattern = "^(true|false)_|^handoff:";
 Constants.whatsapp.userAgent =
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.7559.236 Electron/40.9.3 Safari/537.36";
 
@@ -34,24 +39,21 @@ Constants.event.deleteAccount = "delete-account";
 Constants.event.gotoAccount = "goto-account";
 Constants.event.reloadAccounts = "reload-accounts";
 
-Constants.event.minimizeWindow = "minimize-window";
-Constants.event.maximizeWindow = "maximize-window";
-Constants.event.closeWindow = "close-window";
-Constants.event.windowMaximizeStateChanged = "window-maximize-state-changed";
-Constants.event.windowFocusStateChanged = "window-focus-state-changed";
+Constants.event.titleBarColours = "title-bar-colours";
+Constants.event.themePreference = "theme-preference";
+Constants.event.minimizeToTray = "minimize-to-tray";
+Constants.event.getStartAtLogin = "get-start-at-login";
+Constants.event.setStartAtLogin = "set-start-at-login";
+Constants.event.showWindow = "show-window";
+Constants.event.bridgeEvent = "bridge-event";
 
 const init = (lang) => {
 	// Default English
 	Constants.whatsapp.profilePicture = /profile picture|chats/i;
-	Constants.whatsapp.unreadText = "Unread";
-	Constants.whatsapp.unreadTextSearch = /[0-9]+ unread message(s)?/;
 
 	switch (lang) {
 		case "pt-BR":
 			Constants.whatsapp.profilePicture = /foto do perfil|conversas/i;
-			Constants.whatsapp.unreadText = "Não lidas";
-			Constants.whatsapp.unreadTextSearch =
-				/[0-9]+ mensage(m|ns)? não lida(s)?/;
 			break;
 	}
 
