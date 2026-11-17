@@ -39,7 +39,7 @@ Constants.event.deleteAccount = "delete-account";
 Constants.event.gotoAccount = "goto-account";
 Constants.event.reloadAccounts = "reload-accounts";
 
-Constants.event.titleBarColours = "title-bar-colours";
+Constants.event.titleBarOverlay = "title-bar-overlay";
 Constants.event.themePreference = "theme-preference";
 Constants.event.minimizeToTray = "minimize-to-tray";
 Constants.event.getStartAtLogin = "get-start-at-login";

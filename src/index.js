@@ -324,9 +324,12 @@ class WhatsAppElectron {
 			});
 		});
 
-		ipcMain.on(Constants.event.titleBarColours, (_event, colours) => {
-			if (!this.isHyprland) this.window.setTitleBarOverlay(colours);
+		this.overlay = { color: "rgba(0, 0, 0, 0)" };
+		ipcMain.on(Constants.event.titleBarOverlay, (_event, { height }) => {
+			this.overlay.height = height;
+			this.applyOverlay();
 		});
+		if (!this.isHyprland) setInterval(() => this.updateSymbolColor(), 250);
 
 		ipcMain.on(Constants.event.minimizeToTray, (_event, enabled) => {
 			this.minimizeToTray = enabled;
@@ -353,6 +356,47 @@ class WhatsAppElectron {
 				console.error("Failed to read colour scheme:", e),
 			);
 		}
+	}
+
+	applyOverlay() {
+		if (!this.isHyprland) this.window.setTitleBarOverlay(this.overlay);
+	}
+
+	// Black or white window-button symbols, whichever contrasts more with the
+	// average of the page pixels under the buttons
+	async updateSymbolColor() {
+		if (!this.window.isVisible() || this.window.isMinimized()) return;
+		const [width] = this.window.getContentSize();
+		const strip = 140;
+		const image = await this.window.webContents
+			.capturePage({
+				x: Math.max(0, width - strip),
+				y: 0,
+				width: Math.min(strip, width),
+				height: this.overlay.height ?? 38,
+			})
+			.catch(() => null);
+		const bitmap = image?.toBitmap();
+		if (!bitmap?.length) return;
+		const linear = (v) => {
+			v /= 255;
+			return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		};
+		let total = 0;
+		let samples = 0;
+		for (let i = 0; i < bitmap.length; i += 16) {
+			total +=
+				0.0722 * linear(bitmap[i]) +
+				0.7152 * linear(bitmap[i + 1]) +
+				0.2126 * linear(bitmap[i + 2]);
+			samples++;
+		}
+		const luminance = total / samples;
+		const symbolColor =
+			(luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? "#000000" : "#ffffff";
+		if (symbolColor === this.overlay.symbolColor) return;
+		this.overlay.symbolColor = symbolColor;
+		this.applyOverlay();
 	}
 
 	get sessionBus() {
@@ -547,7 +591,7 @@ class WhatsAppElectron {
 			frame: !this.isHyprland,
 			thickFrame: true,
 			titleBarStyle: this.isHyprland ? "default" : "hidden",
-			titleBarOverlay: !this.isHyprland,
+			titleBarOverlay: !this.isHyprland && { color: "rgba(0, 0, 0, 0)" },
 			autoHideMenuBar: true,
 			show: !startInBackground,
 			webPreferences: {

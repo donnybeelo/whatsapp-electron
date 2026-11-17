@@ -141,7 +141,7 @@ const syncTitleBar = () => {
 		style.textContent = `${TOP_BAR} { -webkit-app-region: drag; }`;
 		document.documentElement.append(style);
 	}
-	let last = "";
+	let last;
 	let lastTheme = "";
 	let lastTray;
 	setInterval(() => {
@@ -162,48 +162,16 @@ const syncTitleBar = () => {
 		} catch (e) {}
 
 		const bar = document.querySelector(TOP_BAR);
-		const x = innerWidth - 1;
-		const covered = !bar || !bar.contains(document.elementFromPoint(x, 1));
-		let color, symbolColor;
-		if (covered) {
-			const [r, g, b] = opaqueBackgroundAt(x, 1);
-			color = `rgb(${r}, ${g}, ${b})`;
-			symbolColor = 0.299 * r + 0.587 * g + 0.114 * b > 128 ? "#0a0a0a" : "#ffffff";
-		} else {
-			({ backgroundColor: color, color: symbolColor } = getComputedStyle(bar));
-		}
+		if (!bar) return;
+		const covered = !bar.contains(document.elementFromPoint(innerWidth - 1, 1));
 		// Bar height over WhatsApp's bar, display-scale-corrected over anything covering it
-		const height = bar
-			? Math.round(
-					bar.getBoundingClientRect().height / (covered ? devicePixelRatio : 1),
-				)
-			: undefined;
-		const key = `${color}|${symbolColor}|${height}`;
-		if (key === last) return;
-		last = key;
-		ipcRenderer.send(Constants.event.titleBarColours, {
-			color,
-			symbolColor,
-			...(height && { height }),
-		});
+		const height = Math.round(
+			bar.getBoundingClientRect().height / (covered ? devicePixelRatio : 1),
+		);
+		if (height === last) return;
+		last = height;
+		ipcRenderer.send(Constants.event.titleBarOverlay, { height });
 	}, 250);
-};
-
-// Background colour at a point, with translucent layers blended into one opaque colour
-const opaqueBackgroundAt = (x, y) => {
-	const layers = [];
-	for (const el of document.elementsFromPoint(x, y)) {
-		const [r, g, b, a = 1] = (
-			getComputedStyle(el).backgroundColor.match(/[\d.]+/g) ?? []
-		).map(Number);
-		if (!(a > 0)) continue;
-		layers.push([r, g, b, a]);
-		if (a >= 1) break;
-	}
-	let colour = [255, 255, 255];
-	for (const [r, g, b, a] of layers.reverse())
-		colour = [r, g, b].map((v, i) => v * a + colour[i] * (1 - a));
-	return colour.map(Math.round);
 };
 
 // Replaces a web-mode service worker with a windows-mode one, once per session
