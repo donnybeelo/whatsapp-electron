@@ -163,11 +163,7 @@ const syncTitleBar = () => {
 
 		const bar = document.querySelector(TOP_BAR);
 		if (!bar) return;
-		const covered = !bar.contains(document.elementFromPoint(innerWidth - 1, 1));
-		// Bar height over WhatsApp's bar, display-scale-corrected over anything covering it
-		const height = Math.round(
-			bar.getBoundingClientRect().height / (covered ? devicePixelRatio : 1),
-		);
+		const height = Math.round(bar.getBoundingClientRect().height);
 		if (height === last) return;
 		last = height;
 		ipcRenderer.send(Constants.event.titleBarOverlay, { height });
