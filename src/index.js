@@ -362,8 +362,8 @@ class WhatsAppElectron {
 		if (!this.isHyprland) this.window.setTitleBarOverlay(this.overlay);
 	}
 
-	// Black or white window-button symbols, whichever contrasts more with the
-	// average of the page pixels under the buttons
+	// Black or white window-button symbols, from the average luminance of the
+	// page pixels under the buttons
 	async updateSymbolColor() {
 		if (!this.window.isVisible() || this.window.isMinimized()) return;
 		const [width] = this.window.getContentSize();
@@ -391,9 +391,8 @@ class WhatsAppElectron {
 				0.2126 * linear(bitmap[i + 2]);
 			samples++;
 		}
-		const luminance = total / samples;
-		const symbolColor =
-			(luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? "#000000" : "#ffffff";
+		// White symbols unless the background is light
+		const symbolColor = total / samples > 0.4 ? "#000000" : "#ffffff";
 		if (symbolColor === this.overlay.symbolColor) return;
 		this.overlay.symbolColor = symbolColor;
 		this.applyOverlay();
